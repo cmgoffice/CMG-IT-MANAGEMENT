@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #27619d;
+  --color-primary-fixed: #86b9fb;
+  --color-primary-container: #86b9fb;
+  --color-primary-dim: #155590;
+  --color-secondary-fixed: #c7e7ff;
+  --color-secondary-container: #c7e7ff;
+  --color-on-secondary-container: #36556a;
+  --color-tertiary: #625983;
+  --color-tertiary-container: #d4c8f9;
+  --color-tertiary-fixed: #d4c8f9;
+  --color-tertiary-dim: #564d77;
+  --color-background: #f7f9fb;
+  --color-surface-container: #eaeff2;
+  --color-surface-container-low: #f0f4f7;
+  --color-surface-container-highest: #dce4e8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-bright: #f7f9fb;
+  --color-surface-dim: #d4dbdf;
+  --color-on-surface: #2c3437;
+  --color-on-surface-variant: #596064;
+  --color-on-primary: #f8f8ff;
+  --color-on-tertiary: #fdf7ff;
+  --color-error: #a83836;
+  --color-error-container: #fa746f;
+  --color-outline: #747c80;
+  --color-outline-variant: #acb3b7;
+  
+  --font-display: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+  --font-headline: "Manrope", sans-serif;
+}
+
+@layer base {
+  html {
+    font-size: 70%;
+  }
+
+  body {
+    @apply bg-background text-on-surface font-body antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}

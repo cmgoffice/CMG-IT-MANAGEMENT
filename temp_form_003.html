@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Asset Request &amp; Transfer | CMG IT Management</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#625983",
+                    "on-secondary": "#f5f9ff",
+                    "secondary-dim": "#38576b",
+                    "outline-variant": "#acb3b7",
+                    "primary-dim": "#155590",
+                    "on-tertiary": "#fdf7ff",
+                    "on-error-container": "#6e0a12",
+                    "primary-container": "#86b9fb",
+                    "secondary": "#446378",
+                    "surface-container-high": "#e3e9ed",
+                    "tertiary-dim": "#564d77",
+                    "on-primary-fixed-variant": "#003f71",
+                    "on-surface": "#2c3437",
+                    "primary-fixed-dim": "#78abec",
+                    "secondary-container": "#c7e7ff",
+                    "on-primary-fixed": "#001f3c",
+                    "on-secondary-container": "#36556a",
+                    "surface": "#f7f9fb",
+                    "error-dim": "#67040d",
+                    "surface-dim": "#d4dbdf",
+                    "surface-container-highest": "#dce4e8",
+                    "primary": "#27619d",
+                    "inverse-primary": "#86b9fb",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#b8d9f1",
+                    "tertiary-fixed-dim": "#c6baea",
+                    "on-tertiary-fixed-variant": "#524972",
+                    "error": "#a83836",
+                    "primary-fixed": "#86b9fb",
+                    "inverse-on-surface": "#9a9d9f",
+                    "secondary-fixed": "#c7e7ff",
+                    "tertiary-container": "#d4c8f9",
+                    "surface-tint": "#27619d",
+                    "surface-container-low": "#f0f4f7",
+                    "inverse-surface": "#0b0f10",
+                    "surface-container": "#eaeff2",
+                    "on-primary-container": "#003662",
+                    "surface-bright": "#f7f9fb",
+                    "on-error": "#fff7f6",
+                    "on-tertiary-container": "#494068",
+                    "on-background": "#2c3437",
+                    "error-container": "#fa746f",
+                    "surface-variant": "#dce4e8",
+                    "on-surface-variant": "#596064",
+                    "on-primary": "#f8f8ff",
+                    "on-tertiary-fixed": "#352c53",
+                    "tertiary-fixed": "#d4c8f9",
+                    "outline": "#747c80",
+                    "on-secondary-fixed-variant": "#405f74",
+                    "on-secondary-fixed": "#234356",
+                    "background": "#f7f9fb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            },
+            "animation": {
+                'gradient-slow': 'gradient 15s ease infinite',
+            },
+            "keyframes": {
+                'gradient': {
+                    '0%, 100%': { 'background-position': '0% 50%' },
+                    '50%': { 'background-position': '100% 50%' },
+                }
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        
+        .animated-bg {
+            background: linear-gradient(-45deg, #f7f9fb, #e0ebf5, #ffffff, #dceefb);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body class="animated-bg text-on-surface min-h-screen">
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 w-full z-40 bg-white/60 backdrop-blur-xl shadow-sm flex justify-between items-center px-8 h-16">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold tracking-tighter text-blue-600">CMG IT Management</span>
+</div>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-slate-500 font-medium hover:text-blue-600 transition-colors" href="#">Dashboard</a>
+<a class="text-blue-600 font-semibold border-b-2 border-blue-600" href="#">Requests</a>
+<a class="text-slate-500 font-medium hover:text-blue-600 transition-colors" href="#">Assets</a>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">help_outline</span>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high border border-white shadow-sm">
+<img alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCphh7me16U03atmJc_1lbYrXxVoGH4XpghLOQofMEBoW6FsYEfMvkEjJ0tQZ6Qxn68_POMhxhzS7yG-HyE0UGWYIcgvQfYA_xZbpsxHXoYZpQYOY-aJyZx9wlEMIQkJRdMMlAfHJo98runZXlpeyRFO28_8i-hO__z2lA49YsxkeeuRwGVrneBZx7pf_jHLRw6G0NMol87SrxeuBkEAhPEempGQuWwCsB-NHS93y1dqKvTBeP7fupqGmAdOcIZFGWarGZVlkcGdwXX"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full w-64 z-50 bg-white/40 backdrop-blur-lg flex flex-col p-4 gap-2 hidden lg:flex border-r border-white/50">
+<div class="mb-8 px-2 pt-4">
+<div class="text-lg font-bold text-blue-600">IT Ops</div>
+<div class="text-[10px] text-slate-500 font-label tracking-widest uppercase opacity-70">Management Suite</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">inventory_2</span> Assets
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">history_edu</span> History
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-blue-600 font-bold bg-white/80 shadow-sm rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_add</span> Requests
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">vignette</span> Licenses
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">settings</span> Settings
+        </a>
+</nav>
+<div class="border-t border-white/50 pt-4 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">support_agent</span> Support
+        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 font-medium hover:bg-white/60 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">logout</span> Logout
+        </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:pl-64 pt-24 pb-12 px-8">
+<div class="max-w-5xl mx-auto space-y-8">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<span class="text-xs font-label text-primary font-semibold tracking-wider uppercase">Procurement Workflow</span>
+<h1 class="text-4xl font-extrabold tracking-tighter text-on-surface mt-1">Asset Request &amp; Transfer</h1>
+<p class="text-on-surface-variant font-label mt-2">ใบขอเบิก/เปลี่ยนผู้ใช้งาน - IT Operations Management Suite</p>
+</div>
+<div class="flex bg-white/40 backdrop-blur-md rounded-xl p-1.5 self-start md:self-auto border border-white/50">
+<button class="px-6 py-2 bg-white text-primary font-bold rounded-lg shadow-sm border border-white/80">Request New</button>
+<button class="px-6 py-2 text-on-surface-variant font-medium hover:text-on-surface transition-colors">Transfer User</button>
+</div>
+</div>
+<!-- Form Content -->
+<form class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<!-- Left Column: Applicant & Equipment -->
+<div class="md:col-span-8 space-y-8">
+<!-- Applicant Info Card -->
+<section class="glass-card p-8 rounded-2xl shadow-xl shadow-blue-900/5 space-y-6">
+<div class="flex items-center gap-3 pb-2 border-b border-white/50">
+<span class="material-symbols-outlined text-primary">person</span>
+<h2 class="text-xl font-bold tracking-tight">Applicant Information</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Full Name</label>
+<input class="w-full bg-white/50 border-white/50 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm" placeholder="John Doe" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Department</label>
+<select class="w-full bg-white/50 border-white/50 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm">
+<option>Marketing</option>
+<option>Engineering</option>
+<option>Human Resources</option>
+<option>Finance</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Position</label>
+<input class="w-full bg-white/50 border-white/50 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm" placeholder="Senior Designer" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Phone / Ext.</label>
+<input class="w-full bg-white/50 border-white/50 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm" placeholder="+1 (555) 000-0000" type="text"/>
+</div>
+<div class="space-y-2 md:col-span-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Request Date</label>
+<input class="w-full bg-white/50 border-white/50 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white transition-all text-sm" type="date"/>
+</div>
+</div>
+</section>
+<!-- Equipment Details -->
+<section class="glass-card p-8 rounded-2xl shadow-xl shadow-blue-900/5 space-y-6">
+<div class="flex items-center gap-3 pb-2 border-b border-white/50">
+<span class="material-symbols-outlined text-primary">devices</span>
+<h2 class="text-xl font-bold tracking-tight">Equipment Details</h2>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">Laptop / PC</span>
+</label>
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">Printer</span>
+</label>
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">CCTV</span>
+</label>
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">Radio</span>
+</label>
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">Monitor</span>
+</label>
+<label class="group flex items-center p-4 bg-white/40 hover:bg-white rounded-xl border border-white/50 hover:border-primary-container cursor-pointer transition-all">
+<input class="w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<span class="ml-3 font-semibold text-sm text-slate-700 group-hover:text-primary transition-colors">Other</span>
+</label>
+</div>
+</section>
+<!-- Transfer Details (Contextual Section) -->
+<section class="glass-card p-8 rounded-2xl border-white/20 bg-primary/5 space-y-6">
+<div class="flex items-center gap-3 pb-2 border-b border-primary/10">
+<span class="material-symbols-outlined text-secondary">swap_horiz</span>
+<h2 class="text-xl font-bold tracking-tight">Transfer &amp; Change Details</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Asset ID</label>
+<input class="w-full bg-white/80 border-white/50 rounded-lg focus:ring-2 focus:ring-primary shadow-sm text-sm" placeholder="AST-2024-001" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Model</label>
+<input class="w-full bg-white/80 border-white/50 rounded-lg focus:ring-2 focus:ring-primary shadow-sm text-sm" placeholder="Dell Latitude 5420" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Serial Number (S/N)</label>
+<input class="w-full bg-white/80 border-white/50 rounded-lg focus:ring-2 focus:ring-primary shadow-sm text-sm" placeholder="SN-123456789" type="text"/>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Previous User Name</label>
+<input class="w-full bg-white/80 border-white/50 rounded-lg focus:ring-2 focus:ring-primary shadow-sm text-sm" placeholder="Jane Smith" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 px-1 uppercase tracking-wider">Reason for change</label>
+<select class="w-full bg-white/80 border-white/50 rounded-lg focus:ring-2 focus:ring-primary shadow-sm text-sm">
+<option>Damaged / Repair</option>
+<option>Upgrade Needed</option>
+<option>Staff Transfer</option>
+<option>Resignation</option>
+</select>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Approval & Submit -->
+<div class="md:col-span-4 space-y-8 sticky top-24">
+<!-- Approval Flow Card -->
+<section class="glass-card p-6 rounded-2xl shadow-xl shadow-blue-900/5">
+<h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">account_tree</span>
+                        Approval Workflow
+                    </h3>
+<div class="space-y-8">
+<div class="flex items-start gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shadow-md shadow-primary/20">1</div>
+<div class="w-0.5 h-12 bg-primary/10 my-1"></div>
+</div>
+<div class="pt-1">
+<p class="text-sm font-bold">Department Head</p>
+<p class="text-[10px] text-primary font-bold uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded mt-1">Pending Review</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center text-sm font-bold">2</div>
+<div class="w-0.5 h-12 bg-slate-100 my-1"></div>
+</div>
+<div class="pt-1">
+<p class="text-sm font-bold text-slate-400">IT Manager</p>
+<p class="text-xs text-slate-400">Waiting for Step 1</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center text-sm font-bold">3</div>
+<div class="pt-1">
+<p class="text-sm font-bold text-slate-400">Inventory Release</p>
+<p class="text-xs text-slate-400">Final Stage</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Summary Widget -->
+<div class="bg-gradient-to-br from-primary to-blue-700 p-6 rounded-2xl shadow-lg shadow-primary/20 text-white">
+<div class="flex justify-between items-center mb-4">
+<h4 class="text-xs font-bold uppercase tracking-widest opacity-80">System Metadata</h4>
+<span class="px-2 py-1 bg-white/20 backdrop-blur-md text-[10px] font-bold rounded uppercase tracking-widest">Live</span>
+</div>
+<ul class="space-y-3">
+<li class="flex justify-between text-xs">
+<span class="opacity-70">Reference ID</span>
+<span class="font-mono font-bold">REQ-9902-X</span>
+</li>
+<li class="flex justify-between text-xs">
+<span class="opacity-70">Priority</span>
+<span class="text-amber-300 font-bold">Medium</span>
+</li>
+<li class="flex justify-between text-xs">
+<span class="opacity-70">Est. Processing</span>
+<span class="font-bold">2-3 Business Days</span>
+</li>
+</ul>
+</div>
+<!-- Actions -->
+<div class="space-y-3">
+<button class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/25 hover:bg-primary-dim hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2 group" type="submit">
+                        Submit Request
+                        <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">send</span>
+</button>
+<button class="w-full bg-white/60 hover:bg-white text-primary font-bold py-3 rounded-xl border border-white transition-all shadow-sm" type="button">
+                        Save Draft
+                    </button>
+<button class="w-full text-error font-semibold py-3 rounded-xl hover:bg-red-50 transition-all text-xs uppercase tracking-widest" type="button">
+                        Cancel &amp; Reset
+                    </button>
+</div>
+</div>
+</form>
+<!-- Bottom Illustration/Section (Decorative) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center glass-card p-12 rounded-[2rem] overflow-hidden relative shadow-2xl shadow-blue-900/5">
+<div class="z-10 space-y-6">
+<h2 class="text-3xl font-extrabold tracking-tight">Need assistance?</h2>
+<p class="text-slate-600 leading-relaxed font-medium">Our IT Support team is available 24/7 to help you with equipment selection or technical specifications. Contact us via the Management Suite Chat.</p>
+<button class="bg-slate-800 text-white px-8 py-3 rounded-full font-bold text-sm tracking-wide shadow-lg hover:bg-slate-900 hover:-translate-y-0.5 transition-all">Open Support Ticket</button>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/2 hidden md:block">
+<img alt="modern office" class="h-full w-full object-cover opacity-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdmDY320ecgd3Ba0XmbiQ-_fzkEceDsqSSLlov2R801CZBTJepAO4say3J3zbHs_f6VX8qRW6qtQglYA0bE4fIU_rasRlq7mal63dLoGB2fPcS6ejit5idpanMo8lL9D9JqLf11vZDPEqJeoVE9CXGzw0_kO_Y0nXgh0e_fC8hnXolKzX55EjRQwJKwE36_C3o7mSJcZ95hoORo_SGHfDlvBkRLujE2QyL0icCp-pA7uY2FQjx1RCkBZjhF83OosSqqlogD7KZeVPz"/>
+<div class="absolute inset-0 bg-gradient-to-l from-transparent via-white/40 to-white/90"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Meta -->
+<footer class="lg:pl-64 px-8 pb-12 mt-auto">
+<div class="max-w-5xl mx-auto border-t border-white/40 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold tracking-widest uppercase text-slate-400">
+<p>© 2024 CMG IT Management • IT Ops Infrastructure Team</p>
+<div class="flex gap-6">
+<a class="hover:text-primary transition-colors" href="#">Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Workflow Docs</a>
+<a class="hover:text-primary transition-colors" href="#">Asset Tracking</a>
+</div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="light" lang="th"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IT Manager Pro - User Registration FM-IT-006</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#27619d",
+                        "primary-container": "#86b9fb",
+                        "on-primary": "#f8f8ff",
+                        "secondary-container": "#c7e7ff",
+                        "surface": "#f7f9fb",
+                        "on-surface": "#2c3437",
+                        "on-surface-variant": "#596064",
+                        "outline": "#747c80",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    animation: {
+                        "float": "float 20s infinite ease-in-out",
+                        "float-slow": "float 30s infinite ease-in-out reverse",
+                    },
+                    keyframes: {
+                        "float": {
+                            "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                            "33%": { transform: "translate(30px, -50px) scale(1.1)" },
+                            "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+        .animated-bg {
+            background: linear-gradient(-45deg, #f7f9fb, #e0ebf5, #ffffff, #dceefb);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .glass-background {
+            background: linear-gradient(135deg, #f0f4f8 0%, #ffffff 100%);
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+        }
+        .animated-shape {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.3;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="animated-bg text-on-surface min-h-screen antialiased">
+<div class="glass-background"></div>
+<div class="animated-shape bg-primary-container w-[500px] h-[500px] -top-64 -left-64 animate-float"></div>
+<div class="animated-shape bg-secondary-container w-[400px] h-[400px] bottom-0 -right-32 animate-float-slow"></div>
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-8 bg-white/40 backdrop-blur-md border-r border-white/20 flex flex-col gap-2 z-50">
+<div class="px-8 mb-10">
+<div class="text-xl font-extrabold text-primary tracking-tighter flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terminal</span>
+                Admin Portal
+            </div>
+<p class="text-xs text-on-surface-variant/70 font-medium">Enterprise Hub</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-on-surface-variant px-8 py-3 flex items-center gap-3 hover:bg-white/60 transition-all font-medium text-sm" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="text-on-surface-variant px-8 py-3 flex items-center gap-3 hover:bg-white/60 transition-all font-medium text-sm" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                Asset Registration
+            </a>
+<a class="text-on-surface-variant px-8 py-3 flex items-center gap-3 hover:bg-white/60 transition-all font-medium text-sm" href="#">
+<span class="material-symbols-outlined">history</span>
+                Equipment History
+            </a>
+<a class="bg-white/80 shadow-sm text-primary rounded-r-full font-bold px-8 py-3 flex items-center gap-3 translate-x-1 transition-all duration-200 text-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+                IT Form Request
+            </a>
+</nav>
+<div class="mt-auto p-6 space-y-1 border-t border-white/20">
+<a class="text-on-surface-variant px-4 py-2 flex items-center gap-3 hover:bg-white/60 transition-all font-medium text-xs rounded-lg" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+                Help Center
+            </a>
+<a class="text-on-surface-variant px-4 py-2 flex items-center gap-3 hover:bg-white/60 transition-all font-medium text-xs rounded-lg" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 p-8 pt-12 relative z-10">
+<header class="flex justify-between items-start mb-12 max-w-6xl mx-auto">
+<div>
+<h1 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">FM-IT-006</h1>
+<p class="text-on-surface-variant font-medium">System Registration &amp; Access Management</p>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-white/60 backdrop-blur-md p-2.5 rounded-full shadow-sm hover:shadow-md transition-all border border-white/40">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full border-2 border-white overflow-hidden shadow-sm">
+<img alt="Administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2DE459IR6vOIiHjvTQkk7C2dreqV9sBrr00HkjaoZSBXzj4xNEQLzUrGQBTUYMqS12gJN01ihHEIbgFvVupc5zk2R-2LiLSSnjiS3wYtYKWWHklstiqywQEh8rWLiA1QYim3NYoU1vlF2Th5Hx7mdvq4hix1UbDRwXRJu0EFHzt0ali6XO_R1qSbZeD8w0xcDjrKrx_bysYSfVK59IoHVts_AQRb6tIR1sCy--d3YbCp_8JbltWp8cYEmleQ_Euwgw9V9X8jyac46"/>
+</div>
+</div>
+</header>
+<div class="max-w-6xl mx-auto space-y-6">
+<!-- Form Header & WR Number -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<div class="md:col-span-8 glass-card rounded-3xl p-8 flex items-center">
+<div>
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-primary-container/20 text-primary text-[10px] font-extrabold uppercase tracking-widest mb-4 border border-primary/10">
+                            Document Code: FM-IT-006 RV.2
+                        </span>
+<h2 class="text-3xl font-bold text-on-surface">ใบขอลงทะเบียน / ใช้งาน / เข้าถึงข้อมูล</h2>
+</div>
+</div>
+<div class="md:col-span-4 glass-card rounded-3xl p-8 border-l-4 border-primary">
+<div class="space-y-6">
+<div class="relative group">
+<label class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-2 opacity-70">WR Number</label>
+<input class="w-full bg-white/40 border-none p-0 text-xl font-bold text-on-surface focus:ring-0 placeholder:text-slate-300" placeholder="WR-2024-XXXX" type="text" value="WR-2024-0452"/>
+</div>
+<div class="relative group">
+<label class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-2 opacity-70">Date</label>
+<input class="w-full bg-transparent border-none p-0 text-sm font-semibold text-on-surface-variant focus:ring-0 cursor-pointer" type="date"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Form Body -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left: Request & User Info -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Request Type Section -->
+<section class="glass-card rounded-3xl p-8">
+<div class="flex items-center gap-3 mb-8">
+<div class="bg-primary text-on-primary w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">fact_check</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">ประเภทการขอ (Request Type)</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<label class="relative flex items-center p-5 cursor-pointer rounded-2xl bg-white/30 border border-white/50 hover:bg-white/60 transition-all group">
+<input class="w-5 h-5 rounded border-outline/30 text-primary focus:ring-primary/20 transition-all cursor-pointer" type="checkbox"/>
+<span class="ml-4 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">ขอสมัครใช้งาน Email</span>
+</label>
+<label class="relative flex items-center p-5 cursor-pointer rounded-2xl bg-white/30 border border-white/50 hover:bg-white/60 transition-all group">
+<input class="w-5 h-5 rounded border-outline/30 text-primary focus:ring-primary/20 transition-all cursor-pointer" type="checkbox"/>
+<span class="ml-4 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">พื้นที่จัดเก็บข้อมูล ส่วนกลาง</span>
+</label>
+<label class="relative flex items-center p-5 cursor-pointer rounded-2xl bg-white/30 border border-white/50 hover:bg-white/60 transition-all group">
+<input class="w-5 h-5 rounded border-outline/30 text-primary focus:ring-primary/20 transition-all cursor-pointer" type="checkbox"/>
+<span class="ml-4 text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">CCTV Online</span>
+</label>
+</div>
+</section>
+<!-- Requester Details Section -->
+<section class="glass-card rounded-3xl p-8">
+<div class="flex items-center gap-3 mb-8">
+<div class="bg-primary text-on-primary w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">person_search</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">กรอกข้อมูล (Requester Details)</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">ชื่อ-นามสกุล (Name)</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" placeholder="Full Name" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">ตำแหน่ง (Position)</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" placeholder="Position" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">ฝ่าย / แผนก (Department)</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" placeholder="Department" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">เบอร์โทรศัพท์ (Phone)</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" placeholder="Ext. or Mobile" type="tel"/>
+</div>
+<div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Job Type</label>
+<select class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm appearance-none">
+<option>Permanent (ประจำ)</option>
+<option>Temporary (รายวัน)</option>
+<option>Contractor (สัญญาจ้าง)</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Start Date</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Requested Email</label>
+<input class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-2.5 text-sm" placeholder="example@domain.com" type="email"/>
+</div>
+</div>
+<div class="md:col-span-2 space-y-2 pt-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">เหตุผลการขอ (Reason / Details)</label>
+<textarea class="w-full bg-white/40 border-white/60 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all px-4 py-3 text-sm min-h-[100px]" placeholder="Explain the business need for this access request..."></textarea>
+</div>
+</div>
+</section>
+</div>
+<!-- Right: IT Section & Notes -->
+<div class="lg:col-span-4 space-y-6">
+<!-- IT Section -->
+<section class="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl text-white relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-8">
+<div class="bg-primary/30 text-primary-container p-2.5 rounded-xl border border-white/10">
+<span class="material-symbols-outlined text-xl">admin_panel_settings</span>
+</div>
+<h3 class="text-lg font-bold">ส่วนงาน IT (IT ONLY)</h3>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-primary-container uppercase tracking-[0.2em] opacity-80 ml-1">Username assigned</label>
+<input class="w-full bg-white/5 border border-white/10 rounded-2xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all px-4 py-3 text-sm font-mono placeholder:text-white/20" placeholder="e.g. j.doe" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-primary-container uppercase tracking-[0.2em] opacity-80 ml-1">Temporary Password</label>
+<div class="relative">
+<input class="w-full bg-white/5 border border-white/10 rounded-2xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all px-4 py-3 text-sm font-mono pr-12" type="password" value="********"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-primary-container uppercase tracking-[0.2em] opacity-80 ml-1">Action Description</label>
+<textarea class="w-full bg-white/5 border border-white/10 rounded-2xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all px-4 py-3 text-sm placeholder:text-white/20" placeholder="Describe implementation steps..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</section>
+<!-- Important Notes -->
+<section class="glass-card rounded-3xl p-8 border-t-2 border-amber-400/50">
+<div class="flex items-center gap-2 mb-6 text-amber-600">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">info</span>
+<h4 class="font-bold text-sm tracking-tight">หมายเหตุ (Important Notes)</h4>
+</div>
+<ul class="space-y-4">
+<li class="flex gap-3 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0"></span>
+<p class="text-xs leading-relaxed text-on-surface-variant font-medium">1. ในกรณีที่สมัคร Email ตามที่ระบุไม่ได้ IT จะดำเนินการแก้ไขให้ตามความเหมาะสม</p>
+</li>
+<li class="flex gap-3 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0"></span>
+<p class="text-xs leading-relaxed text-on-surface-variant font-medium">2. การขอเข้าถึงข้อมูลจากภายนอก ต้องรออนุมัติระยะเวลาประมาณ 1-2 วัน</p>
+</li>
+<li class="flex gap-3 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0"></span>
+<p class="text-xs leading-relaxed text-on-surface-variant font-medium">3. กรุณาระบุ Username และ Password ที่จะให้สมัครให้ชัดเจน</p>
+</li>
+</ul>
+</section>
+</div>
+</div>
+<!-- Approval Section -->
+<section class="glass-card rounded-[2.5rem] p-10 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-5 pointer-events-none scale-150 origin-top-right">
+<span class="material-symbols-outlined text-9xl">verified_user</span>
+</div>
+<h3 class="text-xl font-extrabold text-on-surface mb-12 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+                    ส่วนการอนุมัติ (Approval Workflow)
+                </h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+<div class="text-center group">
+<div class="h-24 flex flex-col justify-end items-center mb-6 relative">
+<!-- Signature Line Simulation -->
+<div class="w-full max-w-[200px] h-[1px] bg-outline/20"></div>
+<div class="absolute bottom-1 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="text-[10px] text-primary/40 italic">Digital Signature Verified</span>
+</div>
+</div>
+<div class="space-y-1">
+<p class="text-sm font-extrabold text-on-surface">ผู้ขอใช้บริการ</p>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">(Requester)</p>
+<p class="text-[10px] text-on-surface-variant/60 mt-4">วันที่: ___ / ___ / ___</p>
+</div>
+</div>
+<div class="text-center group">
+<div class="h-24 flex flex-col justify-end items-center mb-6">
+<div class="w-full max-w-[200px] h-[1px] bg-outline/20"></div>
+</div>
+<div class="space-y-1">
+<p class="text-sm font-extrabold text-on-surface">ผู้อนุมัติ (Manager)</p>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">(Approver Signature)</p>
+<p class="text-[10px] text-on-surface-variant/60 mt-4">วันที่: ___ / ___ / ___</p>
+</div>
+</div>
+<div class="text-center group">
+<div class="h-24 flex flex-col justify-end items-center mb-6">
+<div class="w-full max-w-[200px] h-[1px] bg-outline/20"></div>
+</div>
+<div class="space-y-1">
+<p class="text-sm font-extrabold text-on-surface">ส่วนงานไอที (IT Dept)</p>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">(IT Authorization)</p>
+<p class="text-[10px] text-on-surface-variant/60 mt-4">วันที่: ___ / ___ / ___</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions Footer -->
+<div class="flex justify-end gap-4 py-8">
+<button class="px-8 py-3.5 bg-white/60 backdrop-blur-md border border-white/80 text-on-surface-variant font-bold rounded-2xl hover:bg-white transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95">
+<span class="material-symbols-outlined text-xl">print</span>
+                    พิมพ์ใบคำขอ (Print Form)
+                </button>
+<button class="px-12 py-3.5 bg-primary text-on-primary font-bold rounded-2xl hover:opacity-90 shadow-xl shadow-primary/30 transition-all active:scale-95 flex items-center gap-2 text-sm">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">send</span>
+                    ส่งคำขอ (Submit Request)
+                </button>
+</div>
+</div>
+</main>
+<!-- Global Decorations -->
+<div class="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-20"></div>
+<div class="fixed bottom-[-5%] left-[10%] w-[30%] h-[30%] bg-slate-300/10 blur-[100px] rounded-full pointer-events-none -z-20"></div>
+</body></html>

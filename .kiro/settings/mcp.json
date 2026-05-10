@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "disabled": true
+    },
+    "stitch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "stitch-mcp-stdio"
+      ],
+      "env": {
+        "STITCH_API_KEY": "AQ.Ab8RN6I9QP_c7OX8NJpfaatEebz7oMA4ZJF9U6L2a1VbKtcM-A"
+      }
+    }
+  }
+}

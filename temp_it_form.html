@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#deccfd",
+                    "primary-fixed-dim": "#599ef1",
+                    "on-background": "#2c3437",
+                    "primary-dim": "#005498",
+                    "inverse-on-surface": "#9a9d9f",
+                    "on-error": "#fff7f6",
+                    "surface-variant": "#dce4e8",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-dim": "#5a4c75",
+                    "on-primary-fixed": "#000c1e",
+                    "surface-container-high": "#e3e9ed",
+                    "background": "#f7f9fb",
+                    "error-container": "#fa746f",
+                    "error-dim": "#67040d",
+                    "secondary-fixed-dim": "#c4d6f1",
+                    "inverse-surface": "#0b0f10",
+                    "primary": "#0060ad",
+                    "secondary-container": "#d2e4ff",
+                    "on-secondary": "#f7f9ff",
+                    "on-surface": "#2c3437",
+                    "surface": "#f7f9fb",
+                    "on-secondary-container": "#42536a",
+                    "inverse-primary": "#68abff",
+                    "on-primary": "#f8f8ff",
+                    "on-surface-variant": "#596064",
+                    "on-primary-fixed-variant": "#003461",
+                    "surface-bright": "#f7f9fb",
+                    "surface-tint": "#0060ad",
+                    "secondary-dim": "#43546b",
+                    "on-secondary-fixed": "#2f4056",
+                    "surface-container-low": "#f0f4f7",
+                    "tertiary-container": "#deccfd",
+                    "outline": "#747c80",
+                    "surface-container": "#eaeff2",
+                    "secondary-fixed": "#d2e4ff",
+                    "on-primary-container": "#002b52",
+                    "tertiary": "#665882",
+                    "on-tertiary-container": "#50426b",
+                    "error": "#a83836",
+                    "primary-fixed": "#68abff",
+                    "on-secondary-fixed-variant": "#4b5d74",
+                    "on-tertiary-fixed": "#3c2f56",
+                    "surface-container-highest": "#dce4e8",
+                    "on-tertiary-fixed-variant": "#594b75",
+                    "secondary": "#4f6078",
+                    "on-tertiary": "#fdf7ff",
+                    "outline-variant": "#acb3b7",
+                    "tertiary-fixed-dim": "#d0bfef",
+                    "surface-dim": "#d4dbdf",
+                    "primary-container": "#68abff",
+                    "on-error-container": "#6e0a12"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            backdrop-filter: blur(24px);
+        }
+        .blob {
+            position: fixed;
+            z-index: -1;
+            filter: blur(80px);
+            border-radius: 9999px;
+            opacity: 0.15;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-x-hidden">
+<!-- Animated Background Blobs -->
+<div class="blob bg-primary-fixed-dim w-[600px] h-[600px] -top-48 -left-48"></div>
+<div class="blob bg-tertiary-fixed-dim w-[500px] h-[500px] top-1/2 -right-24"></div>
+<div class="blob bg-primary-fixed w-[400px] h-[400px] -bottom-24 left-1/4"></div>
+<!-- SideNavBar Component -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-6 z-50 h-screen w-72 rounded-r-3xl overflow-hidden bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-2xl">
+<div class="flex items-center gap-3 mb-12 px-2">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+<div>
+<h1 class="text-xl font-black text-blue-600 leading-none">CMG IT Management</h1>
+<span class="text-xs font-label uppercase tracking-widest text-slate-500">IT Management</span>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400 font-['Inter'] font-medium text-sm tracking-wide hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400 font-['Inter'] font-medium text-sm tracking-wide hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Asset</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400 font-['Inter'] font-medium text-sm tracking-wide hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="computer">computer</span>
+<span>Equipment</span>
+</a>
+<!-- Active State: IT Forms -->
+<a class="flex items-center gap-4 px-4 py-3 font-['Inter'] font-medium text-sm tracking-wide bg-gradient-to-br from-blue-600/10 to-blue-400/10 text-blue-600 dark:text-blue-300 rounded-xl scale-[0.98] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description" style="font-variation-settings: 'FILL' 1;">description</span>
+<span>IT Forms</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400 font-['Inter'] font-medium text-sm tracking-wide hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+<span>User Management</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400 font-['Inter'] font-medium text-sm tracking-wide hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Transaction Logs</span>
+</a>
+</nav>
+<div class="mt-auto p-4 bg-surface-container-low rounded-xl">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="close-up portrait of a professional IT administrator in a bright modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIIz3D6h3zdQ3DrQq15qhJhYN7nS4E_lpr-aiTsHUBiOcRpnWO39YQVtajF4irDFd2VGfnM3O2cOk40lWO7OlWsc8-sh1g7HNoVdeMfRTPDK3D1-3shFSWyU13bljBdPrVbtfrSb-pSt7NjzSS2DKgNdTMz7uwFxNjpBnrI9WeAncAFl0tmFEKX3SvkCIWYgs_pHil5E3lcgj8FiuR1A6Yk0feXU0dCHTtPCkH6oz2pJ86skrrwvfuySWrzPYpDUumyXgax-dHuowp"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold truncate">Alex Rivera</p>
+<p class="text-xs text-on-surface-variant truncate">Lead Architect</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-72 min-h-screen p-8 lg:p-12">
+<!-- TopNavBar Concept (Hybrid) -->
+<header class="flex justify-between items-center w-full mb-12">
+<div class="space-y-1">
+<h2 class="font-headline font-extrabold text-4xl tracking-tight text-on-surface">IT Forms</h2>
+<p class="text-on-surface-variant font-body">Select a standardized form to initiate your technical request.</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="pl-12 pr-6 py-3 bg-surface-container-lowest/60 glass-panel border-0 ring-1 ring-outline-variant/15 rounded-full w-64 focus:ring-primary/40 focus:bg-surface-container-lowest transition-all outline-none" placeholder="Search forms..." type="text"/>
+</div>
+<button class="w-12 h-12 rounded-full flex items-center justify-center bg-surface-container-lowest glass-panel ring-1 ring-outline-variant/15 text-on-surface hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<!-- Forms Bento-inspired Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- FM-IT-001: Repair Request -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="build">build</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-primary-dim uppercase bg-primary-fixed/20 px-3 py-1 rounded-full">FM-IT-001</span>
+<h3 class="font-headline text-xl font-bold mt-3 text-on-surface">Repair Request</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Submit requests for hardware repairs, screen replacements, or component failure troubleshooting.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-xs font-medium text-outline">Avg. Processing: 24h</span>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-all">Open Form</button>
+</div>
+</div>
+<!-- FM-IT-002: IT Appointment -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300 lg:col-span-1">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="calendar_month">calendar_month</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-tertiary-dim uppercase bg-tertiary-fixed/40 px-3 py-1 rounded-full">FM-IT-002</span>
+<h3 class="font-headline text-xl font-bold mt-3 text-on-surface">IT Appointment</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Schedule a 1-on-1 session with our technical team for complex setup or consultation.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-xs font-medium text-outline">Flexible Scheduling</span>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-all">Open Form</button>
+</div>
+</div>
+<!-- FM-IT-003: Asset Request & Transfer (Wide) -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col md:flex-row gap-8 hover:translate-y-[-4px] transition-all duration-300 lg:col-span-2">
+<div class="flex-1 flex flex-col justify-between">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-primary-dim uppercase bg-primary-fixed/20 px-3 py-1 rounded-full">FM-IT-003</span>
+<h3 class="font-headline text-2xl font-bold mt-3 text-on-surface">Asset Request &amp; Transfer</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed max-w-md">Request new equipment or transfer existing IT assets between departments or physical locations.</p>
+</div>
+</div>
+<div class="mt-8">
+<button class="px-8 py-3 rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">Initialize Request</button>
+</div>
+</div>
+<div class="w-full md:w-1/3 rounded-xl overflow-hidden h-48 md:h-auto relative">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="clean minimal composition of modern high-end laptops and peripherals on a white marble surface with soft blue lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAh4tM1fS0bguUv2GPUnC6t3sV1fI-uyh62fDMRQv2_e8ZdPkIE6UUtDnC5_nb3GC9Ep9cBbQQqCOLMhEBjBtMdJhq34EmTZQLoGtbQEw4YTvptYpWhHklV-TOHLG5SyWf8o42BLVJjNJxFcCsYrRshOcuQCJRw2drs-xlF88K7jHQT7F8vRnb20NgnxIoexPIsdW9v8-lw-iEyc4SVsGawKiHV7YWdCNmBApKIeChbO07b7AP-YmZR7mAX_f7Q9IVhoict1oVxRnQy"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+</div>
+</div>
+<!-- FM-IT-004: Asset Return -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="assignment_return">assignment_return</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-slate-500 uppercase bg-slate-200 px-3 py-1 rounded-full">FM-IT-004</span>
+<h3 class="font-headline text-xl font-bold mt-3 text-on-surface">Asset Return</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Formal process for returning equipment upon project completion or employee offboarding.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-xs font-medium text-outline">Inventory Update</span>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-all">Open Form</button>
+</div>
+</div>
+<!-- FM-IT-005: License Request -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="vpn_key">vpn_key</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-primary-dim uppercase bg-primary-fixed/20 px-3 py-1 rounded-full">FM-IT-005</span>
+<h3 class="font-headline text-xl font-bold mt-3 text-on-surface">License Request</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Request software keys, subscriptions, or specialized tools for design and development.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-xs font-medium text-outline">Compliance Checked</span>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-all">Open Form</button>
+</div>
+</div>
+<!-- FM-IT-006: User Registration & Data Access -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300 lg:col-span-1">
+<div class="space-y-6">
+<div class="w-14 h-14 rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="person_add">person_add</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-tertiary-dim uppercase bg-tertiary-fixed/40 px-3 py-1 rounded-full">FM-IT-006</span>
+<h3 class="font-headline text-xl font-bold mt-3 text-on-surface">User Registration</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Grant new hires access to internal systems, databases, and secure server environments.</p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-xs font-medium text-outline">IAM Approved</span>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-all">Open Form</button>
+</div>
+</div>
+<!-- FM-IT-007: Remote Support & Software Installation (Main Focus) -->
+<div class="group bg-surface-container-lowest glass-panel rounded-xl p-8 ring-1 ring-outline-variant/15 flex flex-col justify-between hover:translate-y-[-4px] transition-all duration-300 lg:col-span-2 relative overflow-hidden">
+<div class="relative z-10 flex flex-col md:flex-row md:items-center gap-10">
+<div class="flex-1 space-y-6">
+<div class="w-14 h-14 rounded-xl bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl" data-icon="settings_remote" style="font-variation-settings: 'FILL' 1;">settings_remote</span>
+</div>
+<div>
+<span class="font-label text-xs font-bold tracking-widest text-primary-dim uppercase bg-primary-fixed px-3 py-1 rounded-full">FM-IT-007</span>
+<h3 class="font-headline text-2xl font-bold mt-3 text-on-surface">Remote Support &amp; Software</h3>
+<p class="text-sm text-on-surface-variant mt-2 leading-relaxed">Request remote desktop assistance or the deployment of proprietary enterprise software packages to your machine.</p>
+</div>
+</div>
+<div class="md:w-1/2 space-y-4">
+<div class="p-4 bg-surface-container-low rounded-xl flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-xl">speed</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface uppercase tracking-tight">Current Response Time</p>
+<p class="text-lg font-headline font-extrabold text-primary">~ 15 Minutes</p>
+</div>
+</div>
+<button class="w-full py-4 rounded-full bg-primary text-on-primary font-bold hover:bg-primary-dim transition-all flex items-center justify-center gap-2">
+<span>Request Remote Session</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Subtle graphic element -->
+<div class="absolute -right-10 -bottom-10 w-48 h-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+</div>
+</div>
+<!-- Footer Stats -->
+<footer class="mt-16 flex flex-col md:flex-row gap-8 items-center justify-between p-8 bg-surface-container-low/50 glass-panel rounded-xl">
+<div class="flex gap-12">
+<div>
+<p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Active Requests</p>
+<p class="text-2xl font-headline font-extrabold text-on-surface">12</p>
+</div>
+<div>
+<p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Closed This Week</p>
+<p class="text-2xl font-headline font-extrabold text-on-surface">48</p>
+</div>
+<div>
+<p class="text-xs font-label uppercase tracking-widest text-on-surface-variant">Satisfaction Rate</p>
+<p class="text-2xl font-headline font-extrabold text-primary">98.4%</p>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm">
+<span class="material-symbols-outlined">help_outline</span>
+<span>Need immediate assistance? <a class="text-primary font-bold hover:underline" href="#">Contact the Help Desk</a></span>
+</div>
+</footer>
+</main>
+</body></html>
