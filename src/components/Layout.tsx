@@ -19,6 +19,7 @@ const Layout = () => {
     { to: '/', label: 'Dashboard', icon: 'dashboard' },
     { to: '/asset', label: 'Asset', icon: 'inventory' },
     { to: '/equipment', label: 'Equipment', icon: 'devices' },
+    { to: '/projects', label: 'Projects', icon: 'folder_open' },
     { to: '/forms', label: 'IT Forms', icon: 'description' },
     { to: '/logs', label: 'Logs', icon: 'receipt_long' },
   ];

@@ -3,6 +3,8 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Asset from './pages/Asset';
 import Equipment from './pages/Equipment';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
 import ITForms from './pages/ITForms';
 import Users from './pages/Users';
 import Logs from './pages/Logs';
@@ -43,6 +45,8 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="asset" element={<Asset />} />
               <Route path="equipment" element={<Equipment />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="forms" element={<ITForms />} />
               <Route path="forms/001" element={<RepairRequest />} />
               <Route path="forms/002" element={<Appointment />} />
