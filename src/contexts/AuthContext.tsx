@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           lastName: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
           position: '',
           role: ['Staff'],
-          status: 'pending',
+          status: 'approved', // TODO: Changed to 'approved' for testing - revert to 'pending' later
           assignedProjects: [],
           createdAt: Timestamp.now(),
           photoURL: userCredential.user.photoURL || undefined,

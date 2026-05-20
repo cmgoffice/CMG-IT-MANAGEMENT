@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "cmg-it-management"
+  },
+  "targets": {
+    "cmg-it-management": {
+      "hosting": {
+        "site-01": [
+          "cmg-it-management"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
