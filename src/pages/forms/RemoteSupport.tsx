@@ -1,6 +1,61 @@
 
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+
 const RemoteSupport = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'remoteSupports'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'Remote Support Requested',
+        module: 'Remote Support Form (FM-IT-007)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
 
@@ -19,7 +74,7 @@ const RemoteSupport = () => {
                 </button>
 </div>
 </div>
-<form className="space-y-6">
+<form className="space-y-6" onSubmit={handleSubmit}>
 {/*  Category Section: Bento Style Grid  */}
 <section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
 <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -186,8 +241,8 @@ const RemoteSupport = () => {
 {/*  Submit Button Area  */}
 <div className="pt-6 flex flex-col md:flex-row gap-4 items-center justify-between border-t border-white/20">
 <p className="text-base text-slate-500 italic">By submitting this form, you acknowledge that IT personnel may access your device remotely for the purpose of technical support.</p>
-<button className="w-full md:w-auto px-12 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-1 active:scale-95 transition-all" type="submit">
-                    Submit Request
+<button disabled={isSubmitting || isSuccess} className={`w-full md:w-auto px-12 py-4 text-white font-bold rounded-2xl shadow-xl transition-all disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-200' : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-1 active:scale-95'}`} type="submit">
+                    {isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Request'}
                 </button>
 </div>
 </form>
@@ -198,4 +253,3 @@ const RemoteSupport = () => {
 };
 
 export default RemoteSupport;
-

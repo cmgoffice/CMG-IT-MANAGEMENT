@@ -1,6 +1,60 @@
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const Appointment = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'appointments'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'Appointment Requested',
+        module: 'Appointment Form (FM-IT-002)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
 
@@ -19,7 +73,7 @@ const Appointment = () => {
                 </p>
 </header>
 {/*  Appointment Form  */}
-<form className="space-y-8">
+<form className="space-y-8" onSubmit={handleSubmit}>
 {/*  Section: Applicant Details  */}
 <section className="glass-card rounded-2xl p-8 shadow-xl shadow-blue-900/5">
 <h2 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
@@ -165,9 +219,9 @@ const Appointment = () => {
 <button className="px-8 py-3 text-slate-500 font-bold text-sm uppercase tracking-widest hover:text-error transition-all" type="button">
                         Cancel Request
                     </button>
-<button className="px-10 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all flex items-center gap-3 active:scale-95" type="submit">
-<span className="text-base">Submit Appointment</span>
-<span className="material-symbols-outlined text-lg">send</span>
+<button disabled={isSubmitting || isSuccess} className={`px-10 py-4 text-white font-bold rounded-2xl shadow-xl transition-all flex items-center gap-3 disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-500/20' : 'bg-primary shadow-primary/20 hover:scale-[1.02] active:scale-95'}`} type="submit">
+<span className="text-base">{isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Appointment'}</span>
+<span className="material-symbols-outlined text-lg">{isSuccess ? 'check_circle' : 'send'}</span>
 </button>
 </footer>
 </form>
@@ -178,4 +232,3 @@ const Appointment = () => {
 };
 
 export default Appointment;
-

@@ -1,6 +1,60 @@
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const AssetRequest = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetRequests'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'Asset Requested',
+        module: 'Asset Request Form (FM-IT-003)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
 
@@ -18,7 +72,7 @@ const AssetRequest = () => {
 </div>
 </div>
 {/*  Form Content  */}
-<form className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+<form className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start" onSubmit={handleSubmit}>
 {/*  Left Column: Applicant & Equipment  */}
 <div className="md:col-span-8 space-y-8">
 {/*  Applicant Info Card  */}
@@ -184,9 +238,9 @@ const AssetRequest = () => {
 </div>
 {/*  Actions  */}
 <div className="space-y-3">
-<button className="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/25 hover:bg-primary-dim hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2 group" type="submit">
-                        Submit Request
-                        <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">send</span>
+<button disabled={isSubmitting || isSuccess} className={`w-full text-white font-bold py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 group disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-500/25' : 'bg-primary shadow-primary/25 hover:bg-primary-dim hover:scale-[1.02] active:scale-95'}`} type="submit">
+                        {isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Request'}
+                        <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">{isSuccess ? 'check_circle' : 'send'}</span>
 </button>
 <button className="w-full bg-white/60 hover:bg-white text-primary font-bold py-3 rounded-xl border border-white transition-all shadow-sm" type="button">
                         Save Draft
@@ -216,4 +270,3 @@ const AssetRequest = () => {
 };
 
 export default AssetRequest;
-

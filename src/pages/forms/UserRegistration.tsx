@@ -1,6 +1,61 @@
 
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+
 const UserRegistration = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'userRegistrations'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'User Access Requested',
+        module: 'User Registration Form (FM-IT-006)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
 
@@ -18,7 +73,7 @@ const UserRegistration = () => {
 </div>
 </div>
 </header>
-<div className="max-w-[95%] mx-auto space-y-6">
+<form className="max-w-[95%] mx-auto space-y-6" onSubmit={handleSubmit}>
 {/*  Form Header & WR Number  */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 <div className="md:col-span-8 glass-card rounded-3xl p-8 flex items-center">
@@ -227,16 +282,15 @@ const UserRegistration = () => {
 <span className="material-symbols-outlined text-xl">print</span>
                     <span className="text-base">พิมพ์ใบคำขอ (Print Form)</span>
                 </button>
-<button className="px-12 py-3.5 bg-primary text-on-primary font-bold rounded-2xl hover:opacity-90 shadow-xl shadow-primary/30 transition-all active:scale-95 flex items-center gap-2 text-base">
-<span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
-                    <span className="text-base">ส่งคำขอ (Submit Request)</span>
+<button type="submit" disabled={isSubmitting || isSuccess} className={`px-12 py-3.5 text-on-primary font-bold rounded-2xl hover:opacity-90 shadow-xl transition-all active:scale-95 flex items-center gap-2 text-base disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-500/30' : 'bg-primary shadow-primary/30'}`}>
+<span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>{isSuccess ? 'check_circle' : 'send'}</span>
+                    <span className="text-base">{isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'ส่งคำขอ (Submit Request)'}</span>
                 </button>
 </div>
-</div>
+</form>
 
     </>
   );
 };
 
 export default UserRegistration;
-

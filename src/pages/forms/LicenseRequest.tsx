@@ -1,5 +1,60 @@
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+
 const LicenseRequest = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'licenseRequests'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'License Requested',
+        module: 'License Request Form (FM-IT-005)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <div className="max-w-[95%] mx-auto p-8 md:p-12">
@@ -9,7 +64,7 @@ const LicenseRequest = () => {
           <p className="text-on-surface-variant font-medium">(ใบขอเปิดสิทธิ์/ต่ออายุ License)</p>
         </div>
         {/* Bento Grid Layout for Form Sections */}
-        <form className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <form className="grid grid-cols-1 md:grid-cols-12 gap-8" onSubmit={handleSubmit}>
           {/* Section 1: Request Type & Program */}
           <div className="md:col-span-8 glass-card p-8 rounded-2xl shadow-xl shadow-blue-900/5">
             <h2 className="text-2xl font-bold mb-8 flex items-center gap-3 pb-2 border-b border-white/50">
@@ -187,9 +242,9 @@ const LicenseRequest = () => {
             <button className="px-8 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors text-base uppercase tracking-widest" type="button">
               Cancel
             </button>
-            <button className="px-12 py-4 bg-gradient-to-br from-primary to-blue-700 text-white font-extrabold rounded-2xl shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3" type="submit">
-              <span className="material-symbols-outlined text-base">send</span>
-              Submit Request
+          <button disabled={isSubmitting || isSuccess} className={`px-12 py-4 text-white font-extrabold rounded-2xl shadow-xl transition-all flex items-center gap-3 disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-500/20' : 'bg-gradient-to-br from-primary to-blue-700 shadow-blue-900/20 hover:scale-[1.02] active:scale-95'}`} type="submit">
+            <span className="material-symbols-outlined text-base">{isSuccess ? 'check_circle' : 'send'}</span>
+            {isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Request'}
             </button>
           </div>
         </form>

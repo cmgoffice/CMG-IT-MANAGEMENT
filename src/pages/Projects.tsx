@@ -22,16 +22,50 @@ type Project = {
 };
 
 const statusStyles = {
-  'Planning': 'bg-blue-100 text-blue-800',
-  'In Progress': 'bg-yellow-100 text-yellow-800',
-  'Completed': 'bg-green-100 text-green-800',
-  'On Hold': 'bg-gray-100 text-gray-800',
+  'Planning': 'bg-blue-50 text-blue-700 border-blue-200/60',
+  'In Progress': 'bg-amber-50 text-amber-700 border-amber-200/60',
+  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  'On Hold': 'bg-slate-100 text-slate-700 border-slate-200/60',
 };
 
 const priorityStyles = {
-  'Low': 'bg-gray-100 text-gray-700',
-  'Medium': 'bg-orange-100 text-orange-700',
-  'High': 'bg-red-100 text-red-700',
+  'Low': 'bg-slate-50 text-slate-600 border-slate-200/60',
+  'Medium': 'bg-orange-50 text-orange-700 border-orange-200/60',
+  'High': 'bg-rose-50 text-rose-700 border-rose-200/60',
+};
+
+// Function to compress images before converting to base64 to save database space
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        } else if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to JPEG with 60% quality
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 };
 
 const Projects = () => {
@@ -42,6 +76,7 @@ const Projects = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -62,7 +97,11 @@ const Projects = () => {
       setLoading(true);
       const snap = await getDocs(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'projects'));
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project));
-      setProjects(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setProjects(data.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      }));
     } catch (error) {
       console.error('Error loading projects:', error);
     } finally {
@@ -83,28 +122,36 @@ const Projects = () => {
     return matchSearch && matchStatus;
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
+    for (const file of Array.from(files)) {
+      try {
+        const compressedBase64 = await compressImage(file);
         setFormData((prev) => ({
           ...prev,
-          images: [...prev.images, base64],
+          images: [...prev.images, compressedBase64],
         }));
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        alert(`Failed to process image: ${file.name}`);
+      }
+    }
   };
 
   const handlePDFUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
+    const MAX_PDF_SIZE = 500 * 1024; // Limit PDF to 500KB
+
     Array.from(files).forEach((file) => {
+      if (file.size > MAX_PDF_SIZE) {
+        alert(`PDF file "${file.name}" is too large (${Math.round(file.size / 1024)}KB).\nPlease upload a file smaller than 500KB to fit within database limits.`);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64 = event.target?.result as string;
@@ -134,23 +181,49 @@ const Projects = () => {
   const handleSave = async () => {
     if (!formData.name.trim()) return;
 
+    setIsSaving(true);
+    try {
     const projectId = selectedProject?.id || `PRJ-${Date.now()}`;
-    const payload: Omit<Project, 'id'> = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      status: formData.status,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      team: formData.team.split(',').map(t => t.trim()).filter(Boolean),
-      category: formData.category.trim(),
-      priority: formData.priority,
-      progress: formData.progress,
-      images: formData.images,
-      pdfReports: formData.pdfReports,
+    const rawPayload = {
+      name: (formData.name || '').trim(),
+      description: (formData.description || '').trim(),
+      status: formData.status || 'Planning',
+      startDate: formData.startDate || '',
+      endDate: formData.endDate || '',
+      team: (formData.team || '').split(',').map(t => t.trim()).filter(Boolean),
+      category: (formData.category || '').trim(),
+      priority: formData.priority || 'Medium',
+      progress: Number(formData.progress) || 0,
+      images: Array.isArray(formData.images) ? formData.images : [],
+      pdfReports: Array.isArray(formData.pdfReports) ? formData.pdfReports : [],
       createdAt: selectedProject?.createdAt || new Date().toISOString(),
     };
 
+    // แปลงข้อมูลเพื่อลบค่า undefined แฝงทั้งหมดที่ทำให้ Firestore บันทึกไม่ได้
+    const payload = JSON.parse(JSON.stringify(rawPayload));
+
+    // ตรวจสอบขนาดของ Document ก่อนบันทึกลง Firestore (Limit: 1,048,576 bytes)
+    const payloadSize = new Blob([JSON.stringify(payload)]).size;
+    if (payloadSize > 1000000) { // เผื่อ overhead เล็กน้อย ใช้ค่า 1MB = 1,000,000 bytes
+      alert(`The total project size is too large to save (${(payloadSize / 1024 / 1024).toFixed(2)} MB).\nPlease remove some images or PDFs. The database limit is 1 MB per project.`);
+      setIsSaving(false);
+      return;
+    }
+
     await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'projects', projectId), payload);
+    
+    // Update local state immediately for fast feedback
+    setProjects(prev => {
+      if (selectedProject) {
+        return prev.map(p => p.id === projectId ? { id: projectId, ...payload } : p);
+      }
+      return [{ id: projectId, ...payload }, ...prev].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+    });
+
     setShowAddModal(false);
     setSelectedProject(null);
     setFormData({
@@ -166,7 +239,12 @@ const Projects = () => {
       images: [],
       pdfReports: [],
     });
-    await loadProjects();
+    } catch (error: any) {
+      console.error('Error saving project:', error);
+      alert('Failed to save project: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -214,12 +292,12 @@ const Projects = () => {
   };
 
   return (
-    <div className="pt-8 pb-12 px-8 min-h-screen relative z-10">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+    <div className="pt-8 pb-12 px-6 md:px-8 min-h-screen relative z-10">
+      <div className="max-w-[1400px] mx-auto">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-[#2c3437] mb-2 font-display">Projects</h1>
-            <p className="text-[#596064] max-w-lg font-body">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-3 font-display">Projects</h1>
+            <p className="text-slate-500 text-base max-w-2xl font-body leading-relaxed">
               Track and manage IT projects with detailed progress monitoring and team collaboration.
             </p>
           </div>
@@ -229,7 +307,7 @@ const Projects = () => {
                 search
               </span>
               <input
-                className="pl-10 pr-4 py-2 bg-white/40 backdrop-blur-md border border-white/40 rounded-lg focus:ring-2 focus:ring-[#27619d]/20 focus:bg-white transition-all text-sm w-56 shadow-sm font-body outline-none"
+                className="pl-11 pr-4 py-3 bg-white/80 backdrop-blur-md border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#27619d]/10 focus:border-[#27619d]/30 focus:bg-white transition-all text-[15px] w-full md:w-72 shadow-sm font-body outline-none text-slate-800 placeholder:text-slate-400"
                 placeholder="Search projects..."
                 type="text"
                 value={search}
@@ -238,20 +316,20 @@ const Projects = () => {
             </div>
             <button
               onClick={openAddModal}
-              className="flex items-center gap-2 bg-[#27619d] text-[#f8f8ff] px-4 py-2 rounded-lg font-semibold text-sm shadow-lg shadow-[#27619d]/20 hover:opacity-90 transition-opacity active:scale-[0.98] font-body"
+              className="flex items-center justify-center gap-2 bg-[#27619d] text-white px-6 py-3 rounded-xl font-bold text-[15px] shadow-lg shadow-[#27619d]/20 hover:bg-[#1e4d7a] transition-all hover:-translate-y-0.5 active:translate-y-0 font-body shrink-0"
             >
-              <span className="material-symbols-outlined text-sm">add</span>
+              <span className="material-symbols-outlined text-[20px]">add</span>
               New Project
             </button>
           </div>
         </header>
 
-        <section className="flex flex-wrap gap-3 mb-8">
-          <div className="flex items-center gap-2 bg-white/40 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
-            <span className="material-symbols-outlined text-lg">filter_list</span>
+        <section className="flex flex-wrap gap-3 mb-10">
+          <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-5 py-3 rounded-xl text-[15px] font-medium text-slate-600 border border-slate-200 shadow-sm transition-all hover:bg-white">
+            <span className="material-symbols-outlined text-[20px] text-slate-400">filter_list</span>
             Status:
             <select
-              className="bg-transparent border-none p-0 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
+              className="bg-transparent border-none p-0 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-[15px] ml-1"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -274,31 +352,45 @@ const Projects = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.length === 0 && (
-              <div className="col-span-full text-center py-16 text-[#596064] font-body">
-                No projects found.
+              <div className="col-span-full text-center py-20 bg-white/40 rounded-3xl border border-dashed border-slate-300">
+                <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
+                <p className="text-slate-500 font-bold font-body text-lg">No projects found.</p>
               </div>
             )}
           {filtered.map((project) => (
             <div
               key={project.id}
-              className="bg-white/40 backdrop-blur-md border border-white/40 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer group"
+              className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col"
               onClick={() => navigate(`/projects/${project.id}`)}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-[#2c3437] mb-1 font-display">{project.name}</h3>
-                  <p className="text-xs text-[#596064] font-body">{project.id}</p>
+              {/* Cover Image */}
+              {project.images && project.images.length > 0 ? (
+                <div className="w-full aspect-video overflow-hidden relative shrink-0 bg-slate-100 border-b border-slate-100">
+                  <img src={project.images[0]} alt={project.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              ) : (
+                <div className="w-full aspect-video bg-slate-50 relative overflow-hidden flex items-center justify-center shrink-0 group-hover:bg-slate-100 transition-colors border-b border-slate-100">
+                  <span className="material-symbols-outlined text-5xl text-slate-300">imagesmode</span>
+                </div>
+              )}
+
+              <div className="p-6 md:p-8 flex flex-col flex-1">
+                <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <h3 className="text-[1.3rem] font-extrabold text-slate-800 mb-1.5 font-display leading-tight">{project.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-body">{project.id}</p>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       openEditModal(project);
                     }}
-                    className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                     title="Edit"
                   >
-                    <span className="material-symbols-outlined text-sm">edit</span>
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
                   </button>
                   <button
                     onClick={(e) => {
@@ -306,51 +398,52 @@ const Projects = () => {
                       setSelectedProject(project);
                       setShowDeleteModal(true);
                     }}
-                    className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete"
                   >
-                    <span className="material-symbols-outlined text-sm">delete</span>
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
                   </button>
                 </div>
               </div>
 
-              <p className="text-sm text-[#596064] mb-4 line-clamp-2 font-body">{project.description}</p>
+              <p className="text-[14px] text-slate-500 mb-6 line-clamp-2 font-body flex-1 leading-relaxed">{project.description}</p>
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusStyles[project.status]}`}>
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${statusStyles[project.status] || 'bg-slate-100 text-slate-600'}`}>
                   {project.status}
                 </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${priorityStyles[project.priority]}`}>
-                  {project.priority}
+                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${priorityStyles[project.priority] || 'bg-slate-100 text-slate-600'}`}>
+                  {project.priority} Priority
                 </span>
                 {project.category && (
-                  <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                  <span className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-200 bg-white text-slate-600">
                     {project.category}
                   </span>
                 )}
+                </div>
               </div>
 
-              <div className="mb-3">
-                <div className="flex justify-between text-xs text-[#596064] mb-1 font-body">
+              <div className="mb-4">
+                <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 font-body">
                   <span>Progress</span>
-                  <span className="font-bold">{project.progress}%</span>
+                  <span className="text-[#27619d]">{project.progress || 0}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-[#27619d] h-2 rounded-full transition-all"
-                    style={{ width: `${project.progress}%` }}
+                    className="bg-[#27619d] h-1.5 rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${project.progress || 0}%` }}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-[#596064] font-body">
+              <div className="flex items-center justify-between text-[12px] font-bold text-slate-500 font-body pt-4 border-t border-slate-100 mt-2">
                 <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">group</span>
-                  <span>{project.team.length} members</span>
+                  <span className="material-symbols-outlined text-[16px]">group</span>
+                  <span>{project.team?.length || 0} members</span>
                 </div>
                 {project.endDate && (
                   <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">event</span>
+                    <span className="material-symbols-outlined text-[16px]">event</span>
                     <span>{new Date(project.endDate).toLocaleDateString()}</span>
                   </div>
                 )}
@@ -363,48 +456,48 @@ const Projects = () => {
 
       {/* Add/Edit Modal */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
-          <div className="absolute inset-0 bg-black/20" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6" style={{ zIndex: 99999 }}>
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => !isSaving && setShowAddModal(false)} />
+          <div className="relative bg-white/95 backdrop-blur-xl border border-slate-100 rounded-[24px] shadow-2xl w-full max-w-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2 className="text-2xl font-extrabold text-slate-800 font-display tracking-tight">
                 {selectedProject ? 'Edit Project' : 'New Project'}
               </h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-full hover:bg-gray-100">
-                <span className="material-symbols-outlined text-gray-600">close</span>
+              <button onClick={() => !isSaving && setShowAddModal(false)} disabled={isSaving} className="p-2 rounded-full hover:bg-slate-100 transition-colors disabled:opacity-50">
+                <span className="material-symbols-outlined text-slate-500">close</span>
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Project Name *</label>
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Project Name <span className="text-red-500 ml-0.5">*</span></label>
                 <input
                   type="text"
                   placeholder="e.g. Network Infrastructure Upgrade"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium placeholder:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Description</label>
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Description</label>
                 <textarea
                   placeholder="Project description..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none resize-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 resize-none font-medium placeholder:text-slate-400"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Status</label>
+                  <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Project['status'] })}
-                    className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium cursor-pointer"
                   >
                     <option>Planning</option>
                     <option>In Progress</option>
@@ -414,11 +507,11 @@ const Projects = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Priority</label>
+                  <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Priority</label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value as Project['priority'] })}
-                    className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium cursor-pointer"
                   >
                     <option>Low</option>
                     <option>Medium</option>
@@ -427,83 +520,89 @@ const Projects = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Start Date</label>
+                  <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Start Date</label>
                   <input
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-semibold text-gray-800 mb-1.5 block">End Date</label>
+                  <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">End Date</label>
                   <input
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Category</label>
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Category</label>
                 <input
                   type="text"
                   placeholder="e.g. Infrastructure, Software, Security"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium placeholder:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Team Members (comma separated)</label>
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Team Members <span className="normal-case tracking-normal font-medium text-slate-400">(comma separated)</span></label>
                 <input
                   type="text"
                   placeholder="e.g. John Doe, Jane Smith, Bob Wilson"
                   value={formData.team}
                   onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium placeholder:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Progress (%)</label>
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Progress (%)</label>
                 <input
                   type="number"
                   min="0"
                   max="100"
                   value={formData.progress}
                   onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white rounded-xl border border-slate-200 focus:border-[#27619d] focus:ring-2 focus:ring-[#27619d]/20 transition-all text-sm outline-none text-slate-800 font-medium"
                 />
               </div>
 
               {/* Image Upload */}
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">Project Images</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
-                />
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Project Images <span className="normal-case tracking-normal font-medium text-slate-400">(Cover Image)</span></label>
+                <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-slate-50 hover:bg-[#27619d]/5 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer hover:border-[#27619d]/50 group">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[24px] text-[#27619d]">add_photo_alternate</span>
+                  </div>
+                  <span className="font-bold text-slate-600 text-sm">Click to upload images</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
                 {formData.images.length > 0 && (
-                  <div className="mt-3 grid grid-cols-4 gap-2">
+                  <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-5">
                     {formData.images.map((img, idx) => (
                       <div key={idx} className="relative group">
-                        <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-20 object-cover rounded-lg" />
+                        <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-28 object-cover rounded-xl border border-slate-200 shadow-sm" />
                         <button
                           type="button"
                           onClick={() => removeImage(idx)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md"
                         >
-                          <span className="material-symbols-outlined text-xs">close</span>
+                          <span className="material-symbols-outlined text-[14px]">close</span>
                         </button>
                       </div>
                     ))}
@@ -513,26 +612,32 @@ const Projects = () => {
 
               {/* PDF Upload */}
               <div>
-                <label className="text-sm font-semibold text-gray-800 mb-1.5 block">PDF Reports</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  multiple
-                  onChange={handlePDFUpload}
-                  className="w-full px-3 py-2.5 bg-white rounded-lg border border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all text-sm outline-none"
-                />
+                <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">PDF Reports</label>
+                <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-slate-50 hover:bg-[#27619d]/5 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer hover:border-[#27619d]/50 group">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[24px] text-red-500">picture_as_pdf</span>
+                  </div>
+                  <span className="font-bold text-slate-600 text-sm">Click to upload PDF files</span>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    onChange={handlePDFUpload}
+                    className="hidden"
+                  />
+                </label>
                 {formData.pdfReports.length > 0 && (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {formData.pdfReports.map((pdf, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                      <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 shadow-sm px-4 py-3.5 rounded-xl">
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-red-600">picture_as_pdf</span>
-                          <span className="text-sm text-gray-700">{pdf.name}</span>
+                          <span className="text-sm font-bold text-slate-700 line-clamp-1">{pdf.name}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => removePDF(idx)}
-                          className="text-red-600 hover:bg-red-100 rounded p-1"
+                          className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg p-1.5 transition-colors shrink-0"
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>
                         </button>
@@ -543,17 +648,24 @@ const Projects = () => {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200">
+            <div className="flex gap-3 mt-8 pt-6 border-t border-slate-100">
               <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
+                onClick={() => !isSaving && setShowAddModal(false)}
+                disabled={isSaving}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 rounded-lg bg-blue-500 text-white font-semibold text-sm hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
+                disabled={!formData.name.trim() || isSaving}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  !formData.name.trim() || isSaving
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-[#27619d] text-white hover:bg-[#1e4d7a] hover:-translate-y-0.5 shadow-lg shadow-[#27619d]/20'
+                }`}
               >
+                {isSaving && <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>}
                 {selectedProject ? 'Save Changes' : 'Create Project'}
               </button>
             </div>
@@ -564,23 +676,23 @@ const Projects = () => {
 
       {/* Delete Modal */}
       {showDeleteModal && selectedProject && createPortal(
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
-          <div className="absolute inset-0 bg-black/20" onClick={() => setShowDeleteModal(false)} />
-          <div className="relative bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Delete Project</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to delete <span className="font-bold">{selectedProject.name}</span>?
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6" style={{ zIndex: 99999 }}>
+          <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity" onClick={() => setShowDeleteModal(false)} />
+          <div className="relative bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl border border-white">
+            <h2 className="text-2xl font-extrabold text-slate-800 mb-3 font-display">Delete Project</h2>
+            <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+              Are you sure you want to delete <span className="font-bold text-slate-700">{selectedProject.name}</span>? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
               >
                 Delete
               </button>

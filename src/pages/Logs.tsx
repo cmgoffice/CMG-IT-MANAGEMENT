@@ -1,12 +1,48 @@
-const logs = [
-  { date: 'Oct 24, 2023', time: '14:23:01', initials: 'JS', name: 'Jane Smith', email: 'admin@itpro.com', action: 'Asset Registered', actionBg: 'bg-blue-100', actionColor: 'text-blue-700', module: 'Inventory v2.4', ip: '192.168.1.142', ok: true },
-  { date: 'Oct 24, 2023', time: '13:45:12', initials: 'RK', name: 'Robert King', email: 'robert@itpro.com', action: 'Repair Requested', actionBg: 'bg-amber-100', actionColor: 'text-amber-700', module: 'Ticketing System', ip: '10.0.4.88', ok: true },
-  { date: 'Oct 24, 2023', time: '13:12:44', initials: 'JS', name: 'Jane Smith', email: 'admin@itpro.com', action: 'Logged In', actionBg: 'bg-emerald-100', actionColor: 'text-emerald-700', module: 'Core Auth', ip: '192.168.1.142', ok: true },
-  { date: 'Oct 24, 2023', time: '12:58:30', initials: '??', name: 'Unknown Device', email: 'N/A', action: 'Failed Auth', actionBg: 'bg-red-100', actionColor: 'text-red-700', module: 'Core Auth', ip: '45.23.112.9', ok: false },
-  { date: 'Oct 24, 2023', time: '11:04:19', initials: 'MA', name: 'Marc Adams', email: 'marc@itpro.com', action: 'System Config Changed', actionBg: 'bg-blue-100', actionColor: 'text-blue-700', module: 'Global Settings', ip: '172.16.0.45', ok: true },
-];
+import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-const Logs = () => (
+const Logs = () => {
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => {
+        const d = doc.data();
+        const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date();
+        
+        let actionBg = 'bg-blue-100';
+        let actionColor = 'text-blue-700';
+        if (d.ok === false) {
+          actionBg = 'bg-red-100';
+          actionColor = 'text-red-700';
+        } else if (d.action?.toLowerCase().includes('repair')) {
+          actionBg = 'bg-amber-100';
+          actionColor = 'text-amber-700';
+        }
+
+        return {
+          id: doc.id,
+          date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          time: dateObj.toLocaleTimeString('en-US', { hour12: false }),
+          initials: d.name ? d.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '??',
+          name: d.name || 'Unknown User',
+          email: d.email || 'N/A',
+          action: d.action || 'Unknown Action',
+          actionBg,
+          actionColor,
+          module: d.module || 'System',
+          ip: d.ip || 'Internal',
+          ok: d.ok !== false,
+        };
+      });
+      setLogs(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return (
   <div className="pt-8 pb-12 px-8 min-h-screen">
     <div className="max-w-[95%] mx-auto space-y-8">
       {/* Header */}
@@ -28,7 +64,7 @@ const Logs = () => (
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Events (24h)', value: '12,842', sub: '14% from yesterday', subColor: 'text-emerald-600' },
+          { label: 'Total Events', value: logs.length.toString(), sub: 'All recorded logs', subColor: 'text-emerald-600' },
           { label: 'Security Alerts', value: '3', valueColor: 'text-red-600', sub: 'Immediate action required', subColor: 'text-red-600' },
           { label: 'Active Sessions', value: '142', valueColor: 'text-[#27619d]', sub: 'Peak load at 10:45 AM', subColor: 'text-[#596064]' },
           { label: 'DB Response Time', value: '24ms', sub: 'Within optimal range', subColor: 'text-emerald-600' },
@@ -86,8 +122,8 @@ const Logs = () => (
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f0f4f7]">
-            {logs.map((log, idx) => (
-              <tr key={idx} className="hover:bg-white/60 transition-colors">
+            {logs.map((log) => (
+              <tr key={log.id} className="hover:bg-white/60 transition-colors">
                 <td className="px-6 py-4">
                   <div className="text-sm font-medium text-[#2c3437] font-body">{log.date}</div>
                   <div className="text-xs text-[#747c80] font-body">{log.time}</div>
@@ -113,10 +149,15 @@ const Logs = () => (
                 </td>
               </tr>
             ))}
+            {logs.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-[#596064] font-body">No logs found.</td>
+              </tr>
+            )}
           </tbody>
         </table>
         <div className="px-6 py-4 bg-slate-50/50 border-t border-[#dce4e8] flex justify-between items-center">
-          <div className="text-sm text-[#596064] font-body">Showing 1 to 5 of 12,842 results</div>
+          <div className="text-sm text-[#596064] font-body">Showing {logs.length} results</div>
           <div className="flex gap-2">
             <button className="px-3 py-1 border border-[#dce4e8] rounded hover:bg-white transition-colors text-[#747c80]"><span className="material-symbols-outlined text-sm">chevron_left</span></button>
             <button className="px-3 py-1 border border-[#27619d] bg-[#27619d] text-white rounded text-xs font-bold">1</button>
@@ -157,6 +198,7 @@ const Logs = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default Logs;

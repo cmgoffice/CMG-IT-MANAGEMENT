@@ -4,9 +4,11 @@ import { db, storage } from '../../lib/firebase';
 import { generateDocNo } from '../../lib/db';
 import { collection, addDoc, Timestamp, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useNavigate } from 'react-router-dom';
 
 const RepairRequest = () => {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
 
   const [reporterName, setReporterName] = useState('');
   const [reporterDepartment, setReporterDepartment] = useState('');
@@ -196,6 +198,17 @@ const RepairRequest = () => {
         }
       }
 
+      // Write to logs collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'Repair Requested',
+        module: 'Repair Form (FM-IT-001)',
+        ip: 'Internal', // เก็บค่า IP จริงหากมี
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error('Submit error:', err);
@@ -209,7 +222,7 @@ const RepairRequest = () => {
     return (
       <div className="max-w-[95%] mx-auto p-8 md:p-12">
         <div className="glass-card p-10 rounded-2xl shadow-xl text-center">
-          <span className="material-symbols-outlined text-6xl text-primary mb-4">check_circle</span>
+          <span className="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
           <h2 className="text-3xl font-bold text-on-surface mb-2">Submitted Successfully</h2>
           <p className="text-on-surface-variant mb-6">Your repair request has been saved.</p>
           <button
@@ -508,4 +521,3 @@ const RepairRequest = () => {
 };
 
 export default RepairRequest;
-

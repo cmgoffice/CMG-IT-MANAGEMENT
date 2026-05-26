@@ -96,6 +96,91 @@ function getAttachments(data: FormRecord): string[] {
   return [];
 }
 
+function handleExportPDF(record: FormRecord, formLabel: string) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to generate PDF.');
+    return;
+  }
+
+  // กรองฟิลด์ที่ไม่ต้องการให้แสดงในเนื้อหาหลักออก
+  const excludeKeys = ['id', 'createdAt', 'attachments', 'status', 'reporter'];
+  
+  const renderValue = (val: unknown): string => {
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (typeof val === 'object' && val !== null) {
+      if ('seconds' in val && 'nanoseconds' in val) return formatDate(val); // จัดการ Timestamp
+      return Object.entries(val as Record<string, unknown>)
+        .filter(([_, v]) => v === true || (typeof v === 'string' && v.trim() !== ''))
+        .map(([k, v]) => {
+          const formattedKey = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          return typeof v === 'boolean' ? formattedKey : String(v);
+        })
+        .join(', ');
+    }
+    return String(val || '-');
+  };
+
+  // วนลูปข้อมูลมาสร้างเป็นบรรทัด
+  const dataRows = Object.entries(record)
+    .filter(([key]) => !excludeKeys.includes(key))
+    .map(([key, value]) => `
+      <div class="row">
+        <div class="label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+        <div class="value">${renderValue(value)}</div>
+      </div>
+    `).join('');
+
+  const reporterName = getReporterName(record);
+  const submitDate = formatDate(record.createdAt);
+
+  // โครงสร้าง HTML สำหรับสร้างเอกสาร PDF
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${formLabel} - ${record.id}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap');
+    body { font-family: 'Prompt', sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #27619D; padding-bottom: 20px; }
+    .title { font-size: 28px; font-weight: 700; color: #27619D; margin-bottom: 8px; }
+    .doc-info { font-size: 14px; color: #64748b; }
+    .section-title { font-size: 18px; font-weight: 600; color: #27619D; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+    .row { display: flex; margin-bottom: 12px; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
+    .label { font-weight: 600; width: 35%; color: #475569; }
+    .value { flex: 1; color: #0f172a; word-break: break-word; }
+    .footer { margin-top: 80px; display: flex; justify-content: space-around; text-align: center; page-break-inside: avoid; }
+    .sign-box { width: 200px; border-top: 1px solid #475569; padding-top: 10px; margin-top: 80px; color: #475569; font-size: 14px; }
+    @media print { body { padding: 0; } @page { margin: 15mm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+     <div class="title">${formLabel}</div>
+     <div class="doc-info">Record ID: ${record.id} &nbsp;|&nbsp; Submitted: ${submitDate}</div>
+  </div>
+  <div class="section-title">Requester Information</div>
+  <div class="row"><div class="label">Reporter / Applicant Name</div><div class="value">${reporterName}</div></div>
+  <div class="row"><div class="label">Current Status</div><div class="value">${String(record.status || 'Pending').toUpperCase()}</div></div>
+  <div class="section-title">Request Details</div>
+  ${dataRows}
+  <div class="footer">
+     <div><div class="sign-box">Requester / Applicant</div><div style="margin-top: 10px;">Date: ${submitDate.split(' ')[0]}</div></div>
+     <div><div class="sign-box">IT Department Authorization</div><div style="margin-top: 10px;">Date: ____/____/______</div></div>
+  </div>
+  <script>
+    window.onload = function() { window.print(); };
+    window.onafterprint = function() { window.close(); };
+  </script>
+</body>
+</html>`;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+
 const FormBackend = () => {
   const { userProfile: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('001');
@@ -193,6 +278,7 @@ const FormBackend = () => {
                     <th className="px-6 py-4 font-bold">Detail</th>
                     <th className="px-6 py-4 font-bold">Photos</th>
                     <th className="px-6 py-4 font-bold">Status</th>
+                    <th className="px-6 py-4 font-bold">PDF</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -241,6 +327,17 @@ const FormBackend = () => {
                           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusColor}`}>
                             {status}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            type="button"
+                            onClick={() => handleExportPDF(record, activeLabel)}
+                            className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="Download / View PDF"
+                          >
+                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                            Export
+                          </button>
                         </td>
                       </tr>
                     );

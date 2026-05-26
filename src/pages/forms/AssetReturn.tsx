@@ -1,6 +1,60 @@
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const AssetReturn = () => {
   const today = new Date().toISOString().split('T')[0];
+  const { userProfile } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userProfile) return alert('Please login first');
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
+      const reporterEmail = userProfile.email || 'N/A';
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetReturns'), {
+        ...data,
+        reporter: { name: reporterName, email: reporterEmail },
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+
+      // Save to Logs
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
+        name: reporterName,
+        email: reporterEmail,
+        action: 'Asset Returned',
+        module: 'Asset Return Form (FM-IT-004)',
+        ip: 'Internal',
+        ok: true,
+        createdAt: Timestamp.now(),
+      });
+
+      setIsSuccess(true);
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to submit.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
 
@@ -27,7 +81,7 @@ const AssetReturn = () => {
 </div>
 </header>
 {/*  Main Form Layout: Bento Style  */}
-<form className="grid grid-cols-1 md:grid-cols-12 gap-6 pb-24">
+<form className="grid grid-cols-1 md:grid-cols-12 gap-6 pb-24" onSubmit={handleSubmit}>
 {/*  Section 1: Applicant Info (Large Span)  */}
 <section className="md:col-span-8 glass-panel p-8 rounded-[2rem] shadow-xl shadow-blue-900/5">
 <div className="flex items-center gap-3 mb-8 text-primary border-b border-white/50 pb-4">
@@ -202,9 +256,9 @@ const AssetReturn = () => {
 <button className="px-8 py-4 text-primary font-bold hover:bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 transition-all active:scale-95 text-base" type="button">
                         Save as Draft
                     </button>
-<button className="px-12 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-dim hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group" type="submit">
-                        Submit Return Request
-                        <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">send</span>
+<button disabled={isSubmitting || isSuccess} className={`px-12 py-4 text-white font-bold rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 group disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-500/20' : 'bg-primary shadow-primary/20 hover:bg-primary-dim hover:scale-[1.02] active:scale-95'}`} type="submit">
+                        {isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Return Request'}
+                        <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">{isSuccess ? 'check_circle' : 'send'}</span>
 </button>
 </div>
 </form>
@@ -215,4 +269,3 @@ const AssetReturn = () => {
 };
 
 export default AssetReturn;
-
