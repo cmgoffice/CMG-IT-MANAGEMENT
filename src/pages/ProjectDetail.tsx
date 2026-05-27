@@ -56,7 +56,7 @@ const ProjectDetail = () => {
   const [hasEvaluated, setHasEvaluated] = useState(false);
   const [ratings, setRatings] = useState({ q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 });
   const [comment, setComment] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -264,15 +264,16 @@ const ProjectDetail = () => {
                 {!hasEvaluated && !showEvalForm && (
                   <button
                     onClick={() => setShowEvalForm(true)}
-                    className="w-10 h-10 bg-[#27619d] text-white rounded-full flex items-center justify-center shadow-md shadow-[#27619d]/30 hover:-translate-y-1 transition-transform"
-                    title="Evaluate this project"
+                    className="flex items-center gap-2 px-6 py-3 bg-[#27619d] text-white rounded-xl shadow-lg shadow-[#27619d]/30 hover:-translate-y-1 transition-all font-bold text-sm"
                   >
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                    <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                    Evaluate Project
                   </button>
                 )}
                 {hasEvaluated && (
-                  <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-sm border border-emerald-200" title="You've evaluated this project">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200">
                     <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                    <span className="text-sm font-bold">Evaluated</span>
                   </div>
                 )}
               </div>
@@ -452,7 +453,7 @@ const ProjectDetail = () => {
                     className={`relative rounded-[24px] overflow-hidden cursor-pointer group shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 bg-slate-100 border border-slate-200/60 w-full ${
                       project.images.length >= 3 ? 'break-inside-avoid inline-block mb-4 sm:mb-6' : ''
                     }`}
-                    onClick={() => setSelectedImage(img)}
+                    onClick={() => setSelectedImageIndex(idx)}
                   >
                     <img
                       src={img}
@@ -496,22 +497,87 @@ const ProjectDetail = () => {
       </div>
 
       {/* Lightbox Modal for Images */}
-      {selectedImage && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-8" onClick={() => setSelectedImage(null)}>
+      {selectedImageIndex !== null && project?.images && createPortal(
+        <div 
+          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-8 cursor-pointer" 
+          onClick={(e) => {
+            if (project.images.length > 1) {
+              const clickX = e.clientX;
+              const screenWidth = window.innerWidth;
+              if (clickX < screenWidth / 2) {
+                setSelectedImageIndex(prev => prev !== null ? (prev === 0 ? project.images.length - 1 : prev - 1) : null);
+              } else {
+                setSelectedImageIndex(prev => prev !== null ? (prev === project.images.length - 1 ? 0 : prev + 1) : null);
+              }
+            } else {
+              setSelectedImageIndex(null);
+            }
+          }}
+        >
           <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xl transition-opacity duration-300"></div>
           <div className="relative max-w-6xl w-full h-full flex flex-col items-center justify-center animate-[fadeIn_0.2s_ease-out]">
             <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 sm:top-8 sm:right-8 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 backdrop-blur-md transition-all z-10"
+              onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(null); }}
+              className="absolute top-0 right-0 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 backdrop-blur-md transition-all z-50"
             >
               <span className="material-symbols-outlined text-3xl">close</span>
             </button>
-            <img
-              src={selectedImage}
-              alt="Project Full View"
-              className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
+            
+            {/* Main Image Area */}
+            <div className="relative flex-1 w-full flex items-center justify-center min-h-0 my-4 sm:my-6">
+              {project.images.length > 1 && (
+                <button
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setSelectedImageIndex(prev => prev !== null ? (prev === 0 ? project.images.length - 1 : prev - 1) : null); 
+                  }}
+                  className="absolute left-0 sm:left-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 sm:p-3 backdrop-blur-md transition-all z-50"
+                >
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl">chevron_left</span>
+                </button>
+              )}
+
+              <img
+                src={project.images[selectedImageIndex]}
+                alt="Project Full View"
+                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl z-10"
+                onClick={(e) => e.stopPropagation()}
+              />
+
+              {project.images.length > 1 && (
+                <button
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setSelectedImageIndex(prev => prev !== null ? (prev === project.images.length - 1 ? 0 : prev + 1) : null); 
+                  }}
+                  className="absolute right-0 sm:right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 sm:p-3 backdrop-blur-md transition-all z-50"
+                >
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl">chevron_right</span>
+                </button>
+              )}
+            </div>
+
+            {/* Thumbnails Grid at Bottom */}
+            {project.images.length > 1 && (
+              <div 
+                className="w-full flex justify-center gap-3 overflow-x-auto py-2 shrink-0 px-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {project.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 transition-all duration-300 ${
+                      idx === selectedImageIndex 
+                        ? 'ring-2 ring-white scale-110 shadow-lg z-10 opacity-100' 
+                        : 'opacity-40 hover:opacity-100 hover:scale-105'
+                    }`}
+                  >
+                    <img src={img} className="w-full h-full object-cover" alt={`Thumbnail ${idx + 1}`} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>,
         document.body
