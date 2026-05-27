@@ -3,6 +3,7 @@ import { collection, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { exportFM001 } from '../lib/pdfExport';
 
 const APP_NAME = 'CMG-IT-MANAGEMENT';
 
@@ -96,7 +97,31 @@ function getAttachments(data: FormRecord): string[] {
   return [];
 }
 
-function handleExportPDF(record: FormRecord, formLabel: string) {
+function getEquipmentCategoryText(eq: unknown): string {
+  if (!eq || typeof eq !== 'object') return '-';
+  const rec = eq as Record<string, boolean | string>;
+  const items = Object.entries(rec)
+    .filter(([k, v]) => v === true && k !== 'otherText')
+    .map(([k]) => k);
+  if (rec.otherText && typeof rec.otherText === 'string') items.push(rec.otherText);
+  return items.length > 0 ? items.join(', ') : '-';
+}
+
+function getSymptomsText(issue: unknown): string {
+  if (!issue || typeof issue !== 'object') return '-';
+  const rec = issue as Record<string, boolean | string>;
+  const items = Object.entries(rec)
+    .filter(([k, v]) => v === true && k !== 'detailedDescription')
+    .map(([k]) => k);
+  return items.length > 0 ? items.join(', ') : '-';
+}
+
+async function handleExportPDF(record: FormRecord, formLabel: string) {
+  if (formLabel.includes('FM-IT-001')) {
+    await exportFM001(record);
+    return;
+  }
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Please allow popups to generate PDF.');
@@ -272,13 +297,133 @@ const FormBackend = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/60 text-slate-500 text-sm uppercase tracking-wider">
-                    <th className="px-6 py-4 font-bold">#</th>
-                    <th className="px-6 py-4 font-bold">Date Submitted</th>
-                    <th className="px-6 py-4 font-bold">Reporter / Submitter</th>
-                    <th className="px-6 py-4 font-bold">Detail</th>
-                    <th className="px-6 py-4 font-bold">Photos</th>
-                    <th className="px-6 py-4 font-bold">Status</th>
-                    <th className="px-6 py-4 font-bold">PDF</th>
+                    <th className="px-6 py-4 font-bold whitespace-nowrap">#</th>
+                    <th className="px-6 py-4 font-bold whitespace-nowrap">Date Submitted</th>
+                    {activeTab === '001' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Doc No</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Email</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Equipment Category</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Symptoms</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Detailed Description</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Asset ID</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Brand</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Model</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">S/N</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Purchase Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Caretaker</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Receive Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Repair Count</th>
+                      </>
+                    ) : activeTab === '002' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Appointment Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Time</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Location</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Details</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Prepare Tools</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Assess Equip</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Tools Prepared</th>
+                      </>
+                    ) : activeTab === '003' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Type</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Date of Use</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Eq Details</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: Asset ID</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: S/N</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: Prev User</th>
+                      </>
+                    ) : activeTab === '004' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Returner Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Return Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Asset ID</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Eq Details</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Cancel Usage: Asset ID</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Cancel Usage: Reason</th>
+                      </>
+                    ) : activeTab === '005' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Type</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Software</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Registered Prog</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Packet Details</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Start Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Expire Date</th>
+                      </>
+                    ) : activeTab === '006' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Type</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Date of Use</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Email</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Data Access Details</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Action Done</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Username</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Password</th>
+                      </>
+                    ) : activeTab === '007' ? (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Equipment</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">JOB</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Symptoms</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Requirements</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Remote Program</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Remote ID</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Appointment Time</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter / Submitter</th>
+                        <th className="px-6 py-4 font-bold whitespace-nowrap">Detail</th>
+                      </>
+                    )}
+                    <th className="px-6 py-4 font-bold whitespace-nowrap">Photos</th>
+                    <th className="px-6 py-4 font-bold whitespace-nowrap">Status</th>
+                    <th className="px-6 py-4 font-bold whitespace-nowrap">PDF</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -294,16 +439,190 @@ const FormBackend = () => {
 
                     return (
                       <tr key={record.id} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="px-6 py-4 text-slate-600 font-medium">{index + 1}</td>
+                        <td className="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                           {formatDate(record.createdAt)}
                         </td>
-                        <td className="px-6 py-4 text-slate-700 font-medium">
-                          {getReporterName(record)}
-                        </td>
-                        <td className="px-6 py-4 text-slate-700 max-w-xs truncate">
-                          {getDetailText(activeTab, record)}
-                        </td>
+                        {activeTab === '001' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.docNo || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.name || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.email || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={getEquipmentCategoryText(record.equipmentCategory)}>{getEquipmentCategoryText(record.equipmentCategory)}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={getSymptomsText(record.issueDescription)}>{getSymptomsText(record.issueDescription)}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String((record.issueDescription as any)?.detailedDescription || '-')}>{String((record.issueDescription as any)?.detailedDescription || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.assetId || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.brand || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.model || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.serialNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.purchaseDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.caretaker || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.receiveDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.repairCount || '-')}</td>
+                          </>
+                        ) : activeTab === '002' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentTime || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.location || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.jobDetails || '-')}>{String(record.jobDetails || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.prepareTools === 'true' ? 'Yes' : 'No'}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.assessEquipment === 'true' ? 'Yes' : 'No'}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.toolsPrepared === 'true' ? 'Yes' : 'No'}</td>
+                          </>
+                        ) : activeTab === '003' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                              {record.reqType_new === 'true' ? 'New Equipment' : record.reqType_change === 'true' ? 'Change User' : '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.dateOfUse || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.eqComputer === 'true' && 'Computer',
+                                  record.eqPrinter === 'true' && 'Printer',
+                                  record.eqCctv === 'true' && 'CCTV',
+                                  record.eqRadio === 'true' && 'Radio',
+                                  record.eqMonitor === 'true' && 'Monitor',
+                                  record.eqOther === 'true' && 'Other'
+                               ].filter(Boolean).join(', ') || '-'} {record.eqQuantity ? `(Qty: ${record.eqQuantity})` : ''}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.assetId || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.serialNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.previousUser || '-')}</td>
+                          </>
+                        ) : activeTab === '004' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.returnerName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.returnDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.assetId || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.eqComputer === 'true' && 'Computer',
+                                  record.eqPrinter === 'true' && 'Printer',
+                                  record.eqCctv === 'true' && 'CCTV',
+                                  record.eqRadio === 'true' && 'Radio',
+                                  record.eqMonitor === 'true' && 'Monitor',
+                                  record.eqOther === 'true' && `Other (${record.eqOtherText || ''})`
+                               ].filter(Boolean).join(', ') || '-'} {record.eqQuantity ? `(Qty: ${record.eqQuantity})` : ''}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.cancelAssetId || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.cancelReason || '-')}>{String(record.cancelReason || '-')}</td>
+                          </>
+                        ) : activeTab === '005' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                              {record.reqType_new === 'true' ? 'New License' : record.reqType_renew === 'true' ? 'Renew License' : '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.sw_office === 'true' && 'Office 365+',
+                                  record.sw_sketchup === 'true' && 'Sketchup 3D',
+                                  record.sw_autodesk === 'true' && 'Autodesk',
+                                  record.sw_adobe === 'true' && 'Adobe',
+                                  record.sw_other === 'true' && `Other (${record.sw_otherText || ''})`
+                               ].filter(Boolean).join(', ') || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_registeredProgram || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_packetDetails || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_startDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_expireDate || '-')}</td>
+                          </>
+                        ) : activeTab === '006' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.req_email === 'true' && 'Email',
+                                  record.req_storage === 'true' && 'Central Storage',
+                                  record.req_cctv === 'true' && 'CCTV Online'
+                               ].filter(Boolean).join(', ') || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.dateOfUse || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.email || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(`${record.dataAccessDetails || ''} ${record.dataAccessDetails_2 || ''}`)}>{String(`${record.dataAccessDetails || ''} ${record.dataAccessDetails_2 || ''}`).trim() || '-'}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_actionDone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_username || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                              {record.it_password ? '********' : '-'}
+                            </td>
+                          </>
+                        ) : activeTab === '007' ? (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.eq_computer === 'true' && 'Computer/Notebook',
+                                  record.eq_printer === 'true' && 'Printer/Copier',
+                                  record.eq_radio === 'true' && 'Radio Comm',
+                                  record.eq_cctv === 'true' && 'CCTV',
+                                  record.eq_other === 'true' && 'Other'
+                               ].filter(Boolean).join(', ') || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobName || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                               {[
+                                  record.symp_slow === 'true' && 'Slow/Laggy',
+                                  record.symp_software === 'true' && 'Install/Fix Software',
+                                  record.symp_check === 'true' && 'Basic Check',
+                                  record.symp_support === 'true' && 'Usage Support',
+                                  record.symp_other === 'true' && 'Other'
+                               ].filter(Boolean).join(', ') || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(`${record.requirements || ''} ${record.requirements_2 || ''} ${record.requirements_3 || ''}`)}>{String(`${record.requirements || ''} ${record.requirements_2 || ''} ${record.requirements_3 || ''}`).trim() || '-'}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.remoteProgram || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.remoteId || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentTime || '-')}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-6 py-4 text-slate-700 font-medium whitespace-nowrap">
+                              {getReporterName(record)}
+                            </td>
+                            <td className="px-6 py-4 text-slate-700 max-w-xs truncate">
+                              {getDetailText(activeTab, record)}
+                            </td>
+                          </>
+                        )}
                         <td className="px-6 py-4">
                           {attachments.length > 0 ? (
                             <div className="flex flex-wrap gap-2">

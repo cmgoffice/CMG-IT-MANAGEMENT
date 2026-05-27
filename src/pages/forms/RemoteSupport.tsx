@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 
 const RemoteSupport = () => {
   const today = new Date().toISOString().split('T')[0];
   const { userProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -58,196 +58,196 @@ const RemoteSupport = () => {
 
   return (
     <>
+      <div className="max-w-5xl mx-auto p-8 md:p-12">
+        {/*  Header Section  */}
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-secondary-container/80 backdrop-blur-md text-on-secondary-container px-3 py-1 rounded-full text-sm font-bold mb-4 shadow-sm">
+              <span className="material-symbols-outlined text-sm">assignment_add</span>
+              เอกสารหน่วยงาน IT/CMG (เอกสารต้นฉบับ-สำเนา)
+            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-on-surface mb-4">ใบขอ สนับสนุนการใช้งานอุปกรณ์ IT</h1>
+          </div>
+          <div className="flex gap-4">
+            <div className="glass-card p-4 rounded-xl min-w-[140px] shadow-sm">
+              <label className="block text-xs font-bold text-primary uppercase mb-1">เลขที่ WR</label>
+              <input name="wrNumber" className="w-full bg-transparent border-none p-0 text-xl font-black text-on-surface focus:ring-0 placeholder:opacity-30" placeholder="FM-IT-007-XXXXXXX" type="text" />
+            </div>
+            <div className="glass-card p-4 rounded-xl min-w-[140px] shadow-sm">
+              <label className="block text-xs font-bold text-primary uppercase mb-1">วันที่</label>
+              <input name="requestDate" className="w-full bg-transparent border-none p-0 text-lg font-bold text-on-surface focus:ring-0" type="date" defaultValue={today} />
+            </div>
+          </div>
+        </header>
 
-<div className="max-w-[95%] mx-auto p-8 md:p-12">
-{/*  Form Header Section  */}
-<div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-<div>
-<h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Remote Support &amp; Installation</h1>
-</div>
-<div className="flex gap-2">
-<button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-lg font-bold text-slate-600 hover:bg-slate-50">
-<span className="material-symbols-outlined">print</span> Print
-                </button>
-<button className="flex items-center gap-2 bg-blue-600 px-4 py-2 rounded-lg text-lg font-bold text-white hover:bg-blue-700 shadow-md">
-<span className="material-symbols-outlined">save</span> Save Draft
-                </button>
-</div>
-</div>
-<form className="space-y-6" onSubmit={handleSubmit}>
-{/*  Category Section: Bento Style Grid  */}
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-500">category</span>
-                    Equipment Category
-                </h2>
-<div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-<label className="relative flex flex-col items-center justify-center p-4 bg-white/50 border-2 border-transparent rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 transition-all group">
-<input checked={true} className="sr-only peer" name="category" type="radio"/>
-<span className="material-symbols-outlined text-3xl mb-2 text-slate-400 peer-checked:text-blue-600 group-hover:scale-110 transition-transform">laptop_mac</span>
-<span className="text-base font-bold text-slate-500 peer-checked:text-blue-700">Computer/Laptop</span>
-<div className="absolute inset-0 border-2 border-blue-500 rounded-xl opacity-0 peer-checked:opacity-100"></div>
-</label>
-<label className="relative flex flex-col items-center justify-center p-4 bg-white/50 border-2 border-transparent rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 transition-all group">
-<input className="sr-only peer" name="category" type="radio"/>
-<span className="material-symbols-outlined text-3xl mb-2 text-slate-400 peer-checked:text-blue-600 group-hover:scale-110 transition-transform">print</span>
-<span className="text-base font-bold text-slate-500 peer-checked:text-blue-700">Printer/Copier</span>
-<div className="absolute inset-0 border-2 border-blue-500 rounded-xl opacity-0 peer-checked:opacity-100"></div>
-</label>
-<label className="relative flex flex-col items-center justify-center p-4 bg-white/50 border-2 border-transparent rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 transition-all group">
-<input className="sr-only peer" name="category" type="radio"/>
-<span className="material-symbols-outlined text-3xl mb-2 text-slate-400 peer-checked:text-blue-600 group-hover:scale-110 transition-transform">settings_input_antenna</span>
-<span className="text-base font-bold text-slate-500 peer-checked:text-blue-700">Radio Comm</span>
-<div className="absolute inset-0 border-2 border-blue-500 rounded-xl opacity-0 peer-checked:opacity-100"></div>
-</label>
-<label className="relative flex flex-col items-center justify-center p-4 bg-white/50 border-2 border-transparent rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 transition-all group">
-<input className="sr-only peer" name="category" type="radio"/>
-<span className="material-symbols-outlined text-3xl mb-2 text-slate-400 peer-checked:text-blue-600 group-hover:scale-110 transition-transform">videocam</span>
-<span className="text-base font-bold text-slate-500 peer-checked:text-blue-700">CCTV</span>
-<div className="absolute inset-0 border-2 border-blue-500 rounded-xl opacity-0 peer-checked:opacity-100"></div>
-</label>
-<label className="relative flex flex-col items-center justify-center p-4 bg-white/50 border-2 border-transparent rounded-xl cursor-pointer hover:bg-white hover:border-blue-400 transition-all group">
-<input className="sr-only peer" name="category" type="radio"/>
-<span className="material-symbols-outlined text-3xl mb-2 text-slate-400 peer-checked:text-blue-600 group-hover:scale-110 transition-transform">more_horiz</span>
-<span className="text-base font-bold text-slate-500 peer-checked:text-blue-700">Other</span>
-<div className="absolute inset-0 border-2 border-blue-500 rounded-xl opacity-0 peer-checked:opacity-100"></div>
-</label>
-</div>
-</section>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-{/*  Applicant Info  */}
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-500">person</span>
-                        Applicant Info
-                    </h2>
-<div className="space-y-4">
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Full Name</label>
-<input className="w-full bg-white/50 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-300 transition-all" placeholder="John Doe" type="text"/>
-</div>
-<div className="grid grid-cols-2 gap-4">
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Department</label>
-<input className="w-full bg-white/50 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-300" placeholder="Engineering" type="text"/>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Job Title</label>
-<input className="w-full bg-white/50 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-300" placeholder="Technician" type="text"/>
-</div>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Phone / Ext.</label>
-<input className="w-full bg-white/50 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-300" placeholder="+1 (555) 000-0000" type="text"/>
-</div>
-</div>
-</section>
-{/*  Request Details  */}
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-500">checklist</span>
-                        Request Details
-                    </h2>
-<div className="space-y-3">
-<label className="flex items-center gap-3 p-3 bg-white/40 rounded-xl cursor-pointer hover:bg-white/60 transition-colors">
-<input className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox"/>
-<span className="font-medium text-base text-slate-700">Slow / Laggy Performance</span>
-</label>
-<label className="flex items-center gap-3 p-3 bg-white/40 rounded-xl cursor-pointer hover:bg-white/60 transition-colors">
-<input className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox"/>
-<span className="font-medium text-base text-slate-700">Installation (SW / HW)</span>
-</label>
-<label className="flex items-center gap-3 p-3 bg-white/40 rounded-xl cursor-pointer hover:bg-white/60 transition-colors">
-<input className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox"/>
-<span className="font-medium text-base text-slate-700">Repair / Fix</span>
-</label>
-<label className="flex items-center gap-3 p-3 bg-white/40 rounded-xl cursor-pointer hover:bg-white/60 transition-colors">
-<input className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox"/>
-<span className="font-medium text-base text-slate-700">Other Request</span>
-</label>
-</div>
-</section>
-</div>
-{/*  Detailed Description  */}
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-500">description</span>
-                    Requirement Description
-                </h2>
-<textarea className="w-full bg-white/50 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-300" placeholder="Provide a detailed description of the software to be installed or the technical issue you're facing..." rows={4}></textarea>
-</section>
-{/*  Remote Connection Info  */}
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
-<h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-<span className="material-symbols-outlined text-blue-500">deskphone</span>
-                    Remote Access Information
-                </h2>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Remote Software</label>
-<select className="w-full bg-white/70 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
-<option>TeamViewer</option>
-<option>AnyDesk</option>
-<option>Remote Desktop (RDP)</option>
-<option>Zoom / Teams</option>
-</select>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Remote ID / IP</label>
-<input className="w-full bg-white/70 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 font-mono" placeholder="999 888 777" type="text"/>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-500 mb-1 uppercase tracking-wider">Scheduled Time</label>
-<input className="w-full bg-white/70 border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500" type="datetime-local"/>
-</div>
-</div>
-</section>
-{/*  Signatures Section  */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-base font-bold text-slate-400 mb-4 uppercase tracking-[0.2em]">Reporter / Applicant</h2>
-<div className="border-b-2 border-slate-100 h-24 mb-4 relative group">
-<span className="absolute bottom-2 left-2 text-slate-300 text-sm italic group-hover:text-blue-300 transition-colors">Sign Here</span>
-<img className="hidden" data-alt="close up of a digital signature on a screen with blue light glow" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSun7y23mc_0cPoT86TMsh3j55qMn_y-8PKFUZNurF0zYcvwcVPOhSGC8o73tQtFy8eVSzQLDbEJOIwXSQQR-l_EsS0Bg2SfFiv3GZ0aJVk7WxODa1YxW1VWp_9JQfvQZsWIjmdix4Wz-7Yv_ASdUlyKW11tHs28JoMdP6Z567vfuXAbkmbbcxGB-X7465YQrY8ovDOlMj2po6I1I_2ocjAf00mA1-kIb2j7-ilgVFS5I4f2tPWB7RFxiMVbZQOV916zjsaYErLQvY"/>
-</div>
-<div className="grid grid-cols-2 gap-4">
-<div>
-<label className="block text-base font-bold text-slate-400 mb-1 uppercase">Date</label>
-<input className="w-full bg-transparent border-0 border-b border-slate-200 p-0 text-base focus:ring-0 focus:border-blue-500" type="date" defaultValue={today}/>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-400 mb-1 uppercase">Time</label>
-<input className="w-full bg-transparent border-0 border-b border-slate-200 p-0 text-base focus:ring-0 focus:border-blue-500" type="time"/>
-</div>
-</div>
-</section>
-<section className="glass-card p-6 rounded-2xl border border-white/40 shadow-sm">
-<h2 className="text-base font-bold text-slate-400 mb-4 uppercase tracking-[0.2em]">IT recipient / Specialist</h2>
-<div className="border-b-2 border-slate-100 h-24 mb-4 relative group">
-<span className="absolute bottom-2 left-2 text-slate-300 text-sm italic group-hover:text-blue-300 transition-colors">Sign Here</span>
-</div>
-<div className="grid grid-cols-2 gap-4">
-<div>
-<label className="block text-base font-bold text-slate-400 mb-1 uppercase">Date Received</label>
-<input className="w-full bg-transparent border-0 border-b border-slate-200 p-0 text-base focus:ring-0 focus:border-blue-500" type="date" defaultValue={today}/>
-</div>
-<div>
-<label className="block text-base font-bold text-slate-400 mb-1 uppercase">Action Time</label>
-<input className="w-full bg-transparent border-0 border-b border-slate-200 p-0 text-base focus:ring-0 focus:border-blue-500" type="time"/>
-</div>
-</div>
-</section>
-</div>
-{/*  Submit Button Area  */}
-<div className="pt-6 flex flex-col md:flex-row gap-4 items-center justify-between border-t border-white/20">
-<p className="text-base text-slate-500 italic">By submitting this form, you acknowledge that IT personnel may access your device remotely for the purpose of technical support.</p>
-<button disabled={isSubmitting || isSuccess} className={`w-full md:w-auto px-12 py-4 text-white font-bold rounded-2xl shadow-xl transition-all disabled:opacity-80 ${isSuccess ? 'bg-green-500 shadow-green-200' : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-1 active:scale-95'}`} type="submit">
-                    {isSubmitting ? 'Submitting...' : isSuccess ? 'Success!' : 'Submit Request'}
-                </button>
-</div>
-</form>
-</div>
+        {/*  Main Form Canvas  */}
+        <div>
+          <section className="space-y-8">
+            <div className="glass-card p-8 md:p-10 rounded-2xl shadow-xl shadow-blue-900/5 border-2 border-primary/20">
+              <form className="space-y-10" onSubmit={handleSubmit}>
 
+                {/* ประเภท */}
+                <section>
+                  <div className="flex flex-col md:flex-row gap-4 md:gap-12">
+                    <h3 className="text-base font-bold text-on-surface-variant whitespace-nowrap mt-2 w-24">ประเภท</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-8 flex-1">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="eq_computer" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">คอมพิวเตอร์/โน๊ตบุ๊ค</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="eq_printer" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">เครื่องพิมพ์/ถ่ายเอกสาร</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="eq_radio" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">วิทยุสื่อสาร</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="eq_cctv" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">กล้องวงจรปิด</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="eq_other" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">อื่นๆ</span>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                {/* ผู้ใช้งาน */}
+                <section>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-[250px]">
+                      <label className="text-base font-bold text-on-surface-variant whitespace-nowrap">ผู้ขอใช้งาน</label>
+                      <input name="applicantName" className="flex-1 bg-white/40 border-white/50 border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary transition-all min-w-0" type="text" defaultValue={`${userProfile?.firstName || ''} ${userProfile?.lastName || ''}`.trim()} />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 flex-1 min-w-[200px]">
+                      <label className="text-base font-bold text-on-surface-variant whitespace-nowrap">ฝ่าย</label>
+                      <input name="department" className="flex-1 bg-white/40 border-white/50 border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary transition-all min-w-0" type="text" defaultValue={userProfile?.department || ''} />
+                    </div>
+
+                    <div className="flex items-center gap-4 flex-1 min-w-[150px]">
+                      <label className="text-base font-bold text-on-surface-variant whitespace-nowrap">JOB</label>
+                      <input name="jobName" className="flex-1 bg-white/40 border-white/50 border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary transition-all min-w-0" type="text" />
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[200px]">
+                      <label className="text-base font-bold text-on-surface-variant whitespace-nowrap">เบอร์โทร</label>
+                      <input name="phone" className="flex-1 md:w-32 bg-white/40 border-white/50 border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary transition-all min-w-0" type="text" />
+                    </div>
+                  </div>
+                </section>
+
+                {/* อาการ */}
+                <section>
+                  <div className="flex flex-col md:flex-row gap-4 md:gap-12 pt-2">
+                    <h3 className="text-base font-bold text-on-surface-variant whitespace-nowrap mt-2 w-24">อาการ</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-8 flex-1">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="symp_slow" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">ปัญหา ช้า / กระตุก</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="symp_software" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">ลงโปรแกรม / แก้ไขโปรแกรม</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="symp_check" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">ตรวจเช็คเบื้องต้น</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="symp_support" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">สนับสนุนการใช้งาน</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="symp_other" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">อื่นๆ</span>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 1.ส่วนกรอกข้อมูลรายละเอียด */}
+                <section className="pt-4">
+                  <h3 className="text-xl font-bold text-blue-600 underline mb-6">
+                    1.ส่วนกรอกข้อมูลรายละเอียด <span className="text-red-500 font-normal text-lg underline-none ml-2">(การอธิบายอย่างละเอียดช่วยให้แก้ไขทำได้รวดเร็วยิ่งขึ้น)</span>
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <label className="block text-base font-bold text-on-surface-variant whitespace-nowrap w-36">ระบุความต้องการ</label>
+                      <input name="requirements" className="flex-1 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all" type="text" />
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-36"></div>
+                      <input name="requirements_2" className="flex-1 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all" type="text" />
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-36"></div>
+                      <input name="requirements_3" className="flex-1 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all" type="text" />
+                    </div>
+
+                    <div className="flex items-center pt-4">
+                      <label className="block text-base font-bold text-on-surface-variant whitespace-nowrap w-36">โปรแกรมที่ Remote</label>
+                      <input name="remoteProgram" className="flex-1 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all" type="text" />
+                      
+                      <label className="block text-base font-bold text-on-surface-variant whitespace-nowrap ml-8 mr-4">หมายเลขรีโมท</label>
+                      <input name="remoteId" className="flex-1 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all font-mono" type="text" />
+                    </div>
+
+                    <div className="flex items-center pt-4">
+                      <label className="block text-base font-bold text-on-surface-variant whitespace-nowrap w-36">การนัดหมายเวลา</label>
+                      <input name="appointmentTime" className="w-1/2 bg-transparent border-outline-variant border-b-2 border-t-0 border-l-0 border-r-0 py-2 px-2 focus:ring-0 focus:border-primary border-dashed transition-all" type="text" />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Remarks */}
+                <div className="text-red-600 font-bold text-sm space-y-2 mt-8 pt-6 border-t border-red-200">
+                  <p>หมายเหตุ : 1. การ Remote Support อาจจะลงโปรแกรมที่มีขนาดไฟล์ไม่มาก หากต้องการโปรแกรมใหญ่ ต้องส่งเครื่องมาที่ IT</p>
+                  <p className="ml-14">2. สิ่งที่ต้องเตรียมพร้อมสำหรับการขอ Remote ช่วยเหลือ</p>
+                  <p className="ml-20 font-medium">- อุปกรณ์ ต้องเชื่อมต่อ Internet ไว้ตลอดระยะเวลาการ Remote</p>
+                  <p className="ml-20 font-medium">- หากเป็น Notebook ต้องเสียบสายชาร์จแบตไว้</p>
+                  <p className="ml-20 font-medium">- ระหว่างที่ Remote ไม่ปิดโปรแกรม Remote ในขณะที่ทำงาน</p>
+                </div>
+
+                {/* Approval/Signature */}
+                <section className="pt-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 md:px-12">
+                    <div className="border-2 border-black rounded-[2.5rem] p-6 text-center space-y-8 bg-white/30 backdrop-blur-sm">
+                      <p className="text-lg font-bold text-on-surface mt-4">ผู้แจ้ง</p>
+                      <div className="border-b border-black w-3/4 mx-auto"></div>
+                      <div className="flex items-end justify-center gap-2 pb-4">
+                        <span className="text-base font-bold text-on-surface">วันที่ (Date)</span>
+                        <div className="border-b border-black w-1/2"></div>
+                      </div>
+                    </div>
+                    <div className="border-2 border-black rounded-[2.5rem] p-6 text-center space-y-8 bg-white/30 backdrop-blur-sm">
+                      <p className="text-lg font-bold text-on-surface mt-4">ผู้รับแจ้ง</p>
+                      <div className="border-b border-black w-3/4 mx-auto"></div>
+                      <div className="flex items-end justify-center gap-2 pb-4">
+                        <span className="text-base font-bold text-on-surface">วันที่ (Date)</span>
+                        <div className="border-b border-black w-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Form Actions */}
+                <div className="pt-8 flex items-center justify-between">
+                  <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
+                  <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || isSuccess}>
+                    {isSubmitting ? 'กำลังส่งข้อมูล...' : isSuccess ? 'ส่งสำเร็จ!' : 'ส่งข้อมูล'}
+                    <span className="material-symbols-outlined text-lg">{isSuccess ? 'check_circle' : 'send'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
     </>
   );
 };
