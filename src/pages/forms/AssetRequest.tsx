@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { generateDocNo } from '../../lib/db';
 // import { useNavigate } from 'react-router-dom';
 
 const AssetRequest = () => {
@@ -9,24 +10,61 @@ const AssetRequest = () => {
   const { userProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [wrNumber, setWrNumber] = useState('');
+  const [requestDate, setRequestDate] = useState(today);
   // const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDocNo = async () => {
+      try {
+        const newDocNo = await generateDocNo('FM-IT-003', 'assetRequests');
+        if (!cancelled) {
+          setWrNumber(newDocNo);
+        }
+      } catch (error) {
+        console.error('Failed to generate FM-IT-003 number:', error);
+      }
+    };
+
+    loadDocNo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!userProfile) return alert('Please login first');
+    if (!wrNumber) return alert('Document number is not ready yet. Please try again.');
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
 
     try {
       const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
       const reporterEmail = userProfile.email || 'N/A';
+      const reporterDepartment = typeof data.department === 'string' ? data.department : userProfile.department || '';
+      const reporterJobTitle = typeof data.jobTitle === 'string' ? data.jobTitle : userProfile.position || '';
+      const reporterPhone = typeof data.phone === 'string' ? data.phone : '';
 
       // Save to specific form collection
       await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetRequests'), {
         ...data,
-        reporter: { name: reporterName, email: reporterEmail },
+        docNo: wrNumber,
+        wrNumber,
+        requestDate,
+        reporter: {
+          name: reporterName,
+          email: reporterEmail,
+          department: reporterDepartment,
+          jobTitle: reporterJobTitle,
+          phone: reporterPhone,
+        },
         status: 'pending',
         createdAt: Timestamp.now()
       });
@@ -43,7 +81,15 @@ const AssetRequest = () => {
       });
 
       setIsSuccess(true);
-      (e.target as HTMLFormElement).reset();
+      form.reset();
+      setRequestDate(today);
+      try {
+        const nextDocNo = await generateDocNo('FM-IT-003', 'assetRequests');
+        setWrNumber(nextDocNo);
+      } catch (error) {
+        console.error('Failed to refresh FM-IT-003 number:', error);
+        setWrNumber('');
+      }
       setTimeout(() => {
         setIsSuccess(false);
       }, 3000);
@@ -70,11 +116,11 @@ const AssetRequest = () => {
           <div className="flex gap-4">
             <div className="glass-card p-4 rounded-xl min-w-[140px] shadow-sm">
               <label className="block text-xs font-bold text-primary uppercase mb-1">เลขที่ WR</label>
-              <input name="wrNumber" className="w-full bg-transparent border-none p-0 text-xl font-black text-on-surface focus:ring-0 placeholder:opacity-30" placeholder="FM-IT-003-XXXXXXX" type="text" />
+              <input name="wrNumber" className="w-full bg-transparent border-none p-0 text-xl font-black text-on-surface focus:ring-0 placeholder:opacity-30" placeholder="FM-IT-003-XXXXXXX" type="text" value={wrNumber} readOnly />
             </div>
             <div className="glass-card p-4 rounded-xl min-w-[140px] shadow-sm">
               <label className="block text-xs font-bold text-primary uppercase mb-1">วันที่</label>
-              <input name="requestDate" className="w-full bg-transparent border-none p-0 text-lg font-bold text-on-surface focus:ring-0" type="date" defaultValue={today} />
+              <input name="requestDate" className="w-full bg-transparent border-none p-0 text-lg font-bold text-on-surface focus:ring-0" type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} />
             </div>
           </div>
         </header>

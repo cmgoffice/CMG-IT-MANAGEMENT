@@ -352,12 +352,12 @@ const RepairRequest = () => {
                   <div className="mb-6 pb-2">
                     <h3 className="text-lg font-bold text-blue-700 underline underline-offset-4">1.ส่วนกรอกข้อมูลเครื่องอุปกรณ์</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">เลขทะเบียนประจำตัวเครื่อง</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">เลขทะเบียนประจำตัวเครื่อง</label>
                       {assignedAssets.length > 0 ? (
                         <select
-                          className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0"
+                          className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20"
                           value={assetId}
                           onChange={(e) => handleAssetSelect(e.target.value)}
                         >
@@ -367,36 +367,36 @@ const RepairRequest = () => {
                           ))}
                         </select>
                       ) : (
-                        <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={assetId} onChange={(e) => setAssetId(e.target.value)} />
+                        <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={assetId} onChange={(e) => setAssetId(e.target.value)} />
                       )}
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">ยี่ห้อ</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={assetBrand} onChange={(e) => setAssetBrand(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">ยี่ห้อ</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={assetBrand} onChange={(e) => setAssetBrand(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">รุ่น</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={assetModel} onChange={(e) => setAssetModel(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">รุ่น</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={assetModel} onChange={(e) => setAssetModel(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">หมายเลข S/N</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">หมายเลข S/N</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">วันที่ซื้อ</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="date" value={assetPurchaseDate} onChange={(e) => setAssetPurchaseDate(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">วันที่ซื้อ</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="date" value={assetPurchaseDate} onChange={(e) => setAssetPurchaseDate(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">ชื่อผู้ดูแลอุปกรณ์</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={assetCaretaker} onChange={(e) => setAssetCaretaker(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">ชื่อผู้ดูแลอุปกรณ์</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={assetCaretaker} onChange={(e) => setAssetCaretaker(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">วันที่รับเครื่อง</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="date" value={assetReceiveDate} onChange={(e) => setAssetReceiveDate(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">วันที่รับเครื่อง</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="date" value={assetReceiveDate} onChange={(e) => setAssetReceiveDate(e.target.value)} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <label className="block text-sm font-bold text-on-surface-variant whitespace-nowrap">แจ้งซ่อมครั้งที่</label>
-                      <input className="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 text-base py-1 px-0" type="text" value={repairCount} onChange={(e) => setRepairCount(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-bold text-on-surface-variant mb-2">แจ้งซ่อมครั้งที่</label>
+                      <input className="w-full rounded-xl border border-white/50 bg-white/70 px-4 py-3 text-base shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20" type="text" value={repairCount} onChange={(e) => setRepairCount(e.target.value)} />
                     </div>
                   </div>
                   <div className="mt-6">

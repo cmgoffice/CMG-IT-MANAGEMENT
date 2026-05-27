@@ -3,7 +3,7 @@ import { collection, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { exportFM001 } from '../lib/pdfExport';
+import { exportFM001Thai, exportFM002, exportFM003, exportFM004, exportFM005, exportFM006, exportFM007 } from '../lib/pdfExport';
 
 const APP_NAME = 'CMG-IT-MANAGEMENT';
 
@@ -118,7 +118,37 @@ function getSymptomsText(issue: unknown): string {
 
 async function handleExportPDF(record: FormRecord, formLabel: string) {
   if (formLabel.includes('FM-IT-001')) {
-    await exportFM001(record);
+    await exportFM001Thai(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-002')) {
+    await exportFM002(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-003')) {
+    await exportFM003(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-004')) {
+    await exportFM004(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-005')) {
+    await exportFM005(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-006')) {
+    await exportFM006(record);
+    return;
+  }
+
+  if (formLabel.includes('FM-IT-007')) {
+    await exportFM007(record);
     return;
   }
 
@@ -466,8 +496,8 @@ const FormBackend = () => {
                           </>
                         ) : activeTab === '002' ? (
                           <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || record.docNo || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || record.dateOfUse || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
@@ -482,8 +512,8 @@ const FormBackend = () => {
                           </>
                         ) : activeTab === '003' ? (
                           <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || record.docNo || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || record.returnDate || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                               {record.reqType_new === 'true' ? 'New Equipment' : record.reqType_change === 'true' ? 'Change User' : '-'}
                             </td>
@@ -533,7 +563,7 @@ const FormBackend = () => {
                           </>
                         ) : activeTab === '005' ? (
                           <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || record.docNo || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                               {record.reqType_new === 'true' ? 'New License' : record.reqType_renew === 'true' ? 'Renew License' : '-'}
@@ -559,8 +589,8 @@ const FormBackend = () => {
                           </>
                         ) : activeTab === '006' ? (
                           <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || record.docNo || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || record.dateOfUse || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                                {[
                                   record.req_email === 'true' && 'Email',
@@ -584,7 +614,7 @@ const FormBackend = () => {
                           </>
                         ) : activeTab === '007' ? (
                           <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
+                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || record.docNo || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
                             <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                                {[
