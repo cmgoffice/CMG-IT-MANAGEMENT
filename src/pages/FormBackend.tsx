@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, Timestamp } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { collection, query, onSnapshot, Timestamp, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -22,6 +23,122 @@ const formTabs = [
   { id: '007', label: 'FM-IT-007', collection: 'remoteSupports' },
 ];
 
+const tabColumnsConfig: Record<string, { id: string; label: string }[]> = {
+  '001': [
+    { id: 'docNo', label: 'Doc No' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'reporterName', label: 'Reporter Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'email', label: 'Email' },
+    { id: 'equipmentCategory', label: 'Equipment Category' },
+    { id: 'symptoms', label: 'Symptoms' },
+    { id: 'detailedDescription', label: 'Detailed Description' },
+    { id: 'assetId', label: 'Asset ID' },
+    { id: 'brand', label: 'Brand' },
+    { id: 'model', label: 'Model' },
+    { id: 'sn', label: 'S/N' },
+    { id: 'purchaseDate', label: 'Purchase Date' },
+    { id: 'caretaker', label: 'Caretaker' },
+    { id: 'receiveDate', label: 'Receive Date' },
+    { id: 'repairCount', label: 'Repair Count' },
+  ],
+  '002': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'reporterName', label: 'Reporter Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'appointmentDate', label: 'Appointment Date' },
+    { id: 'time', label: 'Time' },
+    { id: 'location', label: 'Location' },
+    { id: 'jobDetails', label: 'Job Details' },
+    { id: 'prepareTools', label: 'Prepare Tools' },
+    { id: 'assessEquip', label: 'Assess Equip' },
+    { id: 'toolsPrepared', label: 'Tools Prepared' },
+  ],
+  '003': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'type', label: 'Type' },
+    { id: 'applicantName', label: 'Applicant Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'dateOfUse', label: 'Date of Use' },
+    { id: 'reason', label: 'Reason' },
+    { id: 'eqDetails', label: 'Eq Details' },
+    { id: 'changeAssetId', label: 'Change: Asset ID' },
+    { id: 'changeSn', label: 'Change: S/N' },
+    { id: 'changePrevUser', label: 'Change: Prev User' },
+  ],
+  '004': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'returnerName', label: 'Returner Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'returnDate', label: 'Return Date' },
+    { id: 'reason', label: 'Reason' },
+    { id: 'assetId', label: 'Asset ID' },
+    { id: 'eqDetails', label: 'Eq Details' },
+    { id: 'cancelUsageAssetId', label: 'Cancel Usage: Asset ID' },
+    { id: 'cancelUsageReason', label: 'Cancel Usage: Reason' },
+  ],
+  '005': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'requestType', label: 'Request Type' },
+    { id: 'software', label: 'Software' },
+    { id: 'applicantName', label: 'Applicant Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'reason', label: 'Reason' },
+    { id: 'itRegisteredProg', label: 'IT: Registered Prog' },
+    { id: 'itPacketDetails', label: 'IT: Packet Details' },
+    { id: 'itStartDate', label: 'IT: Start Date' },
+    { id: 'itExpireDate', label: 'IT: Expire Date' },
+  ],
+  '006': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'requestType', label: 'Request Type' },
+    { id: 'applicantName', label: 'Applicant Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'jobTitle', label: 'Job Title' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'dateOfUse', label: 'Date of Use' },
+    { id: 'reason', label: 'Reason' },
+    { id: 'email', label: 'Email' },
+    { id: 'dataAccessDetails', label: 'Data Access Details' },
+    { id: 'itActionDone', label: 'IT: Action Done' },
+    { id: 'itUsername', label: 'IT: Username' },
+    { id: 'itPassword', label: 'IT: Password' },
+  ],
+  '007': [
+    { id: 'wrNumber', label: 'WR Number' },
+    { id: 'requestDate', label: 'Request Date' },
+    { id: 'equipment', label: 'Equipment' },
+    { id: 'applicantName', label: 'Applicant Name' },
+    { id: 'department', label: 'Department' },
+    { id: 'job', label: 'JOB' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'symptoms', label: 'Symptoms' },
+    { id: 'requirements', label: 'Requirements' },
+    { id: 'remoteProgram', label: 'Remote Program' },
+    { id: 'remoteId', label: 'Remote ID' },
+    { id: 'appointmentTime', label: 'Appointment Time' },
+  ],
+  'fallback': [
+    { id: 'reporter', label: 'Reporter / Submitter' },
+    { id: 'detail', label: 'Detail' },
+  ]
+};
+
 function formatDate(ts: unknown): string {
   if (!ts) return '-';
   if (ts instanceof Timestamp) {
@@ -36,9 +153,11 @@ function formatDate(ts: unknown): string {
 function getReporterName(data: FormRecord): string {
   if (typeof data.reporter === 'object' && data.reporter !== null) {
     const r = data.reporter as Record<string, string>;
-    return `${r.name || ''}`.trim() || '-';
+    if (r.name) return `${r.name || ''}`.trim() || '-';
   }
+  if (typeof data.reporterName === 'string') return data.reporterName;
   if (typeof data.applicantName === 'string') return data.applicantName;
+  if (typeof data.returnerName === 'string') return data.returnerName;
   if (typeof data.requester === 'string') return data.requester;
   if (typeof data.submittedBy === 'string') return data.submittedBy;
   if (typeof data.name === 'string') return data.name;
@@ -48,6 +167,7 @@ function getReporterName(data: FormRecord): string {
 function getDetailText(tabId: string, data: FormRecord): string {
   switch (tabId) {
     case '001': {
+      if (typeof data.equipmentCategory === 'string') return data.equipmentCategory;
       const eq = data.equipmentCategory as Record<string, boolean | string> | undefined;
       if (eq) {
         const items = Object.entries(eq)
@@ -62,6 +182,7 @@ function getDetailText(tabId: string, data: FormRecord): string {
       return (data.appointmentDate as string) || (data.date as string) || (data.purpose as string) || '-';
     }
     case '003': {
+      if (typeof data.equipmentCategory === 'string') return data.equipmentCategory;
       const eq = data.equipmentCategory as Record<string, boolean | string> | undefined;
       if (eq) {
         const items = Object.entries(eq)
@@ -98,7 +219,9 @@ function getAttachments(data: FormRecord): string[] {
 }
 
 function getEquipmentCategoryText(eq: unknown): string {
-  if (!eq || typeof eq !== 'object') return '-';
+  if (!eq) return '-';
+  if (typeof eq === 'string') return eq;
+  if (typeof eq !== 'object') return '-';
   const rec = eq as Record<string, boolean | string>;
   const items = Object.entries(rec)
     .filter(([k, v]) => v === true && k !== 'otherText')
@@ -108,12 +231,119 @@ function getEquipmentCategoryText(eq: unknown): string {
 }
 
 function getSymptomsText(issue: unknown): string {
-  if (!issue || typeof issue !== 'object') return '-';
+  if (!issue) return '-';
+  if (typeof issue === 'string') return issue;
+  if (typeof issue !== 'object') return '-';
   const rec = issue as Record<string, boolean | string>;
   const items = Object.entries(rec)
     .filter(([k, v]) => v === true && k !== 'detailedDescription')
     .map(([k]) => k);
   return items.length > 0 ? items.join(', ') : '-';
+}
+
+function renderCellContent(colId: string, record: any, activeTab: string): string {
+  switch (colId) {
+    case 'docNo': return String(record.docNo || '-');
+    case 'requestDate': return String(record.requestDate || '-');
+    case 'reporterName':
+      return activeTab === '001' ? String(record.reporter?.name || record.reporterName || '-') : String(record.applicantName || record.reporterName || '-');
+    case 'applicantName':
+      return String(record.applicantName || record.reporter?.name || record.reporterName || '-');
+    case 'department':
+      return activeTab === '001' ? String(record.reporter?.department || record.department || '-') : String(record.department || '-');
+    case 'jobTitle':
+      return activeTab === '001' ? String(record.reporter?.jobTitle || record.jobTitle || '-') : String(record.jobTitle || '-');
+    case 'phone':
+      return activeTab === '001' ? String(record.reporter?.phone || record.phone || '-') : String(record.phone || '-');
+    case 'email':
+      return activeTab === '001' ? String(record.reporter?.email || record.email || '-') : String(record.email || '-');
+    case 'equipmentCategory': return getEquipmentCategoryText(record.equipmentCategory);
+    case 'symptoms': {
+      if (activeTab === '001') return getSymptomsText(record.issueDescription || record.symptoms);
+      const sympStr = [
+        (record.symp_slow === 'true' || record.symp_slow === true) && 'Slow/Laggy', 
+        (record.symp_software === 'true' || record.symp_software === true) && 'Install/Fix Software', 
+        (record.symp_check === 'true' || record.symp_check === true) && 'Basic Check', 
+        (record.symp_support === 'true' || record.symp_support === true) && 'Usage Support', 
+        (record.symp_other === 'true' || record.symp_other === true) && 'Other'
+      ].filter(Boolean).join(', ');
+      return sympStr || String(record.symptoms || '-');
+    }
+    case 'detailedDescription': return String(record.issueDescription?.detailedDescription || record.detailedDescription || '-');
+    case 'assetId':
+      return activeTab === '001' ? String(record.asset?.assetId || record.assetId || '-') : String(record.assetId || '-');
+    case 'brand': return String(record.asset?.brand || record.brand || '-');
+    case 'model': return String(record.asset?.model || record.model || '-');
+    case 'sn':
+      return activeTab === '001' ? String(record.asset?.serialNumber || record.sn || record.serialNumber || '-') : String(record.serialNumber || record.sn || '-');
+    case 'purchaseDate': return String(record.asset?.purchaseDate || record.purchaseDate || '-');
+    case 'caretaker': return String(record.asset?.caretaker || record.caretaker || '-');
+    case 'receiveDate': return String(record.asset?.receiveDate || record.receiveDate || '-');
+    case 'repairCount': return String(record.asset?.repairCount || record.repairCount || '-');
+    case 'wrNumber': return String(record.wrNumber || '-');
+    case 'appointmentDate': return String(record.appointmentDate || '-');
+    case 'time': return String(record.appointmentTime || record.time || '-');
+    case 'location': return String(record.location || '-');
+    case 'jobDetails': return String(record.jobDetails || '-');
+    case 'prepareTools': return (record.prepareTools === 'true' || record.prepareTools === true || record.prepareTools === 'Yes') ? 'Yes' : record.prepareTools === 'false' || record.prepareTools === false || record.prepareTools === 'No' ? 'No' : String(record.prepareTools || 'No');
+    case 'assessEquip': return (record.assessEquipment === 'true' || record.assessEquipment === true || record.assessEquip === 'true' || record.assessEquip === true || record.assessEquipment === 'Yes') ? 'Yes' : record.assessEquipment === 'false' || record.assessEquipment === false || record.assessEquip === 'false' || record.assessEquip === false || record.assessEquipment === 'No' ? 'No' : String(record.assessEquip || record.assessEquipment || 'No');
+    case 'toolsPrepared': return (record.toolsPrepared === 'true' || record.toolsPrepared === true || record.toolsPrepared === 'Yes') ? 'Yes' : record.toolsPrepared === 'false' || record.toolsPrepared === false || record.toolsPrepared === 'No' ? 'No' : String(record.toolsPrepared || 'No');
+    case 'type': 
+      if (record.type) return String(record.type);
+      return (record.reqType_new === 'true' || record.reqType_new === true) ? 'New Equipment' : (record.reqType_change === 'true' || record.reqType_change === true) ? 'Change User' : '-';
+    case 'dateOfUse': return String(record.dateOfUse || '-');
+    case 'reason': return String(record.reason || '-');
+    case 'eqDetails': {
+      if (typeof record.eqDetails === 'string' && record.eqDetails.trim() !== '') return record.eqDetails;
+      const eqStr = [
+        (record.eqComputer === 'true' || record.eqComputer === true) && (activeTab === '007' ? 'Computer/Notebook' : 'Computer'),
+        (record.eqPrinter === 'true' || record.eqPrinter === true) && (activeTab === '007' ? 'Printer/Copier' : 'Printer'),
+        (record.eqCctv === 'true' || record.eqCctv === true) && 'CCTV',
+        (record.eqRadio === 'true' || record.eqRadio === true) && (activeTab === '007' ? 'Radio Comm' : 'Radio'),
+        (record.eqMonitor === 'true' || record.eqMonitor === true) && 'Monitor',
+        (record.eqOther === 'true' || record.eqOther === true) && (activeTab === '004' ? `Other (${record.eqOtherText || ''})` : 'Other')
+      ].filter(Boolean).join(', ') || '-';
+      const finalEqStr = eqStr || '-';
+      return (activeTab === '003' || activeTab === '004') && record.eqQuantity ? finalEqStr + ` (Qty: ${record.eqQuantity})` : finalEqStr;
+    }
+    case 'changeAssetId': return String(record.changeAssetId || record.assetId || '-');
+    case 'changeSn': return String(record.changeSn || record.serialNumber || '-');
+    case 'changePrevUser': return String(record.changePrevUser || record.previousUser || '-');
+    case 'returnerName': return String(record.returnerName || record.applicantName || '-');
+    case 'returnDate': return String(record.returnDate || '-');
+    case 'cancelUsageAssetId': return String(record.cancelUsageAssetId || record.cancelAssetId || '-');
+    case 'cancelUsageReason': return String(record.cancelUsageReason || record.cancelReason || '-');
+    case 'requestType':
+      if (record.requestType) return String(record.requestType);
+      if (activeTab === '005') return (record.reqType_new === 'true' || record.reqType_new === true) ? 'New License' : (record.reqType_renew === 'true' || record.reqType_renew === true) ? 'Renew License' : '-';
+      return [
+        (record.req_email === 'true' || record.req_email === true) && 'Email', 
+        (record.req_storage === 'true' || record.req_storage === true) && 'Central Storage', 
+        (record.req_cctv === 'true' || record.req_cctv === true) && 'CCTV Online'
+      ].filter(Boolean).join(', ') || '-';
+    case 'software':
+      if (record.software) return String(record.software);
+      return [(record.sw_office === 'true' || record.sw_office === true) && 'Office 365+', (record.sw_sketchup === 'true' || record.sw_sketchup === true) && 'Sketchup 3D', (record.sw_autodesk === 'true' || record.sw_autodesk === true) && 'Autodesk', (record.sw_adobe === 'true' || record.sw_adobe === true) && 'Adobe', (record.sw_other === 'true' || record.sw_other === true) && `Other (${record.sw_otherText || ''})`].filter(Boolean).join(', ') || '-';
+    case 'itRegisteredProg': return String(record.itRegisteredProg || record.it_registeredProgram || '-');
+    case 'itPacketDetails': return String(record.itPacketDetails || record.it_packetDetails || '-');
+    case 'itStartDate': return String(record.itStartDate || record.it_startDate || '-');
+    case 'itExpireDate': return String(record.itExpireDate || record.it_expireDate || '-');
+    case 'dataAccessDetails': return String(record.dataAccessDetails || `${record.dataAccessDetails || ''} ${record.dataAccessDetails_2 || ''}`.trim() || '-');
+    case 'itActionDone': return String(record.itActionDone || record.it_actionDone || '-');
+    case 'itUsername': return String(record.itUsername || record.it_username || '-');
+    case 'itPassword': return (record.itPassword || record.it_password) ? '********' : '-';
+    case 'equipment':
+      if (record.equipment) return String(record.equipment); 
+      return [(record.eq_computer === 'true' || record.eq_computer === true) && 'Computer/Notebook', (record.eq_printer === 'true' || record.eq_printer === true) && 'Printer/Copier', (record.eq_radio === 'true' || record.eq_radio === true) && 'Radio Comm', (record.eq_cctv === 'true' || record.eq_cctv === true) && 'CCTV', (record.eq_other === 'true' || record.eq_other === true) && 'Other'].filter(Boolean).join(', ') || '-';
+    case 'job': return String(record.job || record.jobName || '-');
+    case 'requirements': return String(record.requirements || `${record.requirements || ''} ${record.requirements_2 || ''} ${record.requirements_3 || ''}`.trim() || '-');
+    case 'remoteProgram': return String(record.remoteProgram || '-');
+    case 'remoteId': return String(record.remoteId || '-');
+    case 'appointmentTime': return String(record.appointmentTime || '-');
+    case 'reporter': return getReporterName(record as FormRecord);
+    case 'detail': return getDetailText(activeTab, record as FormRecord);
+    default: return '-';
+  }
 }
 
 async function handleExportPDF(record: FormRecord, formLabel: string) {
@@ -211,6 +441,31 @@ const FormBackend = () => {
   const [activeTab, setActiveTab] = useState('001');
   const [records, setRecords] = useState<FormRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [orderedColumns, setOrderedColumns] = useState<{ id: string; label: string }[]>([]);
+  const [draggedColIndex, setDraggedColIndex] = useState<number | null>(null);
+  const [dragOverColIndex, setDragOverColIndex] = useState<number | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importTargetTab, setImportTargetTab] = useState('001');
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvData, setCsvData] = useState<string[][]>([]);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowColumnDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const isMasterAdmin = currentUser && (
     Array.isArray(currentUser.role)
@@ -221,6 +476,18 @@ const FormBackend = () => {
   useEffect(() => {
     const activeForm = formTabs.find((t) => t.id === activeTab);
     if (!activeForm) return;
+    setStatusFilter('pending'); // Reset filter when changing tabs
+    setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
+
+    // Set default column order
+    setOrderedColumns([
+      { id: 'dateSubmitted', label: 'Date Submitted' },
+      ...(tabColumnsConfig[activeTab] || tabColumnsConfig['fallback']),
+      { id: 'photos', label: 'Photos' },
+      { id: 'status', label: 'Status' },
+      { id: 'pdf', label: 'PDF' },
+      { id: 'delete', label: 'Delete' },
+    ]);
 
     setLoading(true);
     const q = query(collection(db, `${APP_NAME}/root/${activeForm.collection}`));
@@ -250,12 +517,245 @@ const FormBackend = () => {
 
   const activeLabel = formTabs.find((t) => t.id === activeTab)?.label || '';
 
+  // Filter records based on selected status
+  const filteredRecords = records.filter(record => {
+    const currentStatus = (record.status as string)?.toLowerCase() || 'pending';
+    return currentStatus === statusFilter.toLowerCase();
+  });
+
+  const getAvailableFields = (tabId: string) => {
+    const formFields = tabColumnsConfig[tabId] || tabColumnsConfig['fallback'];
+    return [
+      { id: 'id', label: 'Record ID' },
+      { id: 'status', label: 'Status' },
+      ...formFields
+    ];
+  };
+
+  const handleDownloadTemplate = () => {
+    const targetForm = formTabs.find((t) => t.id === activeTab);
+    if (!targetForm) return;
+
+    const fields = getAvailableFields(activeTab);
+    // สร้าง CSV Header โดยการวนลูปเอา label ของแต่ละฟิลด์มาใส่
+    const headers = fields.map(f => `"${f.label}"`).join(',');
+    
+    // สร้างไฟล์และดาวน์โหลด (ใช้ \uFEFF เพื่อให้รองรับภาษาไทยใน Excel)
+    const blob = new Blob(['\uFEFF' + headers], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${targetForm.label}-Template.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const updatePreview = (headers: string[], data: string[][], mapping: Record<string, string>) => {
+    const parsedRecords: any[] = [];
+    data.forEach((values, index) => {
+      const record: any = {};
+      let hasData = false;
+      headers.forEach((header, i) => {
+        const mappedField = mapping[header];
+        if (mappedField) {
+          let val = values[i] || '';
+          if (val.toLowerCase() === 'true') record[mappedField] = true;
+          else if (val.toLowerCase() === 'false') record[mappedField] = false;
+          else record[mappedField] = val;
+          hasData = true;
+        }
+      });
+      if (hasData) {
+        if (!record.id) record.id = `IMP-${Date.now()}-${index}`;
+        if (!record.createdAt) record.createdAt = Timestamp.now();
+        if (!record.status) record.status = 'pending';
+        parsedRecords.push(record);
+      }
+    });
+    setImportPreview(parsedRecords);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (csvHeaders.length > 0 && csvData.length > 0) {
+      const initialMapping: Record<string, string> = {};
+      const availableFields = getAvailableFields(importTargetTab);
+      csvHeaders.forEach(header => {
+        const match = availableFields.find(f => f.id.toLowerCase() === header.toLowerCase() || f.label.toLowerCase() === header.toLowerCase());
+        if (match) {
+          initialMapping[header] = match.id;
+        } else {
+          initialMapping[header] = '';
+        }
+      });
+      setColumnMapping(initialMapping);
+      updatePreview(csvHeaders, csvData, initialMapping);
+    }
+  }, [importTargetTab]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split('\n').filter((line) => line.trim());
+        
+        if (lines.length < 2) {
+          setImportErrors(['CSV file is empty or invalid']);
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const dataLines = lines.slice(1);
+        const rawData: string[][] = [];
+
+        dataLines.forEach((line) => {
+          const values: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            
+            if (char === '"') {
+              if (inQuotes && nextChar === '"') {
+                current += '"';
+                i++; 
+              } else {
+                inQuotes = !inQuotes;
+              }
+            } else if (char === ',' && !inQuotes) {
+              values.push(current.trim().replace(/^"|"$/g, ''));
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          values.push(current.trim().replace(/^"|"$/g, ''));
+          rawData.push(values);
+        });
+
+        setCsvHeaders(headers);
+        setCsvData(rawData);
+
+        const initialMapping: Record<string, string> = {};
+        const availableFields = getAvailableFields(importTargetTab);
+        headers.forEach(header => {
+          const match = availableFields.find(f => f.id.toLowerCase() === header.toLowerCase() || f.label.toLowerCase() === header.toLowerCase());
+          initialMapping[header] = match ? match.id : '';
+        });
+        setColumnMapping(initialMapping);
+        updatePreview(headers, rawData, initialMapping);
+        setImportErrors([]);
+      } catch (error) {
+        setImportErrors(['Failed to parse CSV file: ' + (error as Error).message]);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportRecords = async () => {
+    if (importPreview.length === 0) return;
+    const targetForm = formTabs.find((t) => t.id === importTargetTab);
+    if (!targetForm) return;
+
+    try {
+      const promises = importPreview.map((record) => {
+        const { id, ...data } = record;
+        return setDoc(doc(db, `${APP_NAME}/root/${targetForm.collection}`, id), data);
+      });
+
+      await Promise.all(promises);
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportPreview([]);
+      setImportErrors([]);
+      setCsvHeaders([]);
+      setCsvData([]);
+      setColumnMapping({});
+    } catch (error) {
+      setImportErrors(['Failed to import records: ' + (error as Error).message]);
+    }
+  };
+
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) return;
+    const activeForm = formTabs.find((t) => t.id === activeTab);
+    if (!activeForm) return;
+
+    try {
+      await deleteDoc(doc(db, `${APP_NAME}/root/${activeForm.collection}`, recordId));
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      alert('Failed to delete record.');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (filteredRecords.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ALL ${filteredRecords.length} displayed records? THIS ACTION CANNOT BE UNDONE!`)) return;
+    
+    const activeForm = formTabs.find((t) => t.id === activeTab);
+    if (!activeForm) return;
+
+    try {
+      const batch = writeBatch(db);
+      filteredRecords.forEach((record) => {
+        const docRef = doc(db, `${APP_NAME}/root/${activeForm.collection}`, record.id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error deleting all records:', error);
+      alert('Failed to delete records.');
+    }
+  };
+
   return (
     <div className="pt-8 pb-12 px-8 min-h-screen relative z-10">
       <div className="max-w-[95%] mx-auto">
-        <header className="mb-8">
-          <h2 className="font-headline font-extrabold text-4xl tracking-tight text-on-surface">Form Backend</h2>
-          <p className="text-on-surface-variant font-body mt-2">Manage and review all submitted IT forms.</p>
+        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h2 className="font-headline font-extrabold text-4xl tracking-tight text-on-surface">Form Backend</h2>
+            <p className="text-on-surface-variant font-body mt-2">Manage and review all submitted IT forms.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDeleteAll}
+              disabled={filteredRecords.length === 0}
+              className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete All Displayed Records"
+            >
+              <span className="material-symbols-outlined text-sm">delete_sweep</span>
+              Delete All
+            </button>
+            <button
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-2 bg-white text-[#27619d] px-4 py-2 rounded-lg font-semibold text-sm border border-[#27619d]/20 hover:bg-slate-50 transition-colors shadow-sm"
+              title="Download CSV Template"
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+              Template
+            </button>
+            <button
+              onClick={() => {
+                setImportTargetTab(activeTab);
+                setShowImportModal(true);
+              }}
+              className="flex items-center gap-2 bg-[#625983] text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 transition-opacity"
+              title="Import CSV"
+            >
+              <span className="material-symbols-outlined text-sm">upload</span>
+              Import CSV
+            </button>
+          </div>
         </header>
 
         {/* Tabs */}
@@ -267,7 +767,7 @@ const FormBackend = () => {
               className={`px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? 'bg-[#27619D] text-white shadow-md shadow-[#27619D]/30'
-                  : 'bg-white/50 text-slate-600 hover:bg-white/80 border border-white/60'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
               {tab.label}
@@ -276,10 +776,90 @@ const FormBackend = () => {
         </div>
 
         {/* Table Card */}
-        <div className="bg-white/60 backdrop-blur-sm border border-white/40 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/60 flex items-center justify-between">
-            <h3 className="font-bold text-lg text-on-surface">{activeLabel}</h3>
-            <span className="text-sm text-slate-500 font-medium">{records.length} record(s)</span>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h3 className="font-bold text-lg text-on-surface">{activeLabel}</h3>
+              <span className="text-sm text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">{filteredRecords.length} record(s)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Column Visibility Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-sm">view_column</span>
+                  Columns
+                </button>
+                
+                {showColumnDropdown && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 max-h-[60vh] overflow-y-auto">
+                    <div className="px-4 pb-2 mb-2 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                      <span className="text-xs font-bold text-slate-400 uppercase">Visible Columns</span>
+                      <button onClick={() => setHiddenColumns(new Set())} className="text-xs text-[#27619D] hover:underline font-medium">Reset</button>
+                    </div>
+                    {orderedColumns.map((col, index) => (
+                      <div 
+                        key={col.id} 
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedColIndex(index);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnter={() => setDragOverColIndex(index)}
+                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                        onDrop={() => {
+                          if (draggedColIndex !== null && dragOverColIndex !== null && draggedColIndex !== dragOverColIndex) {
+                            setOrderedColumns(prev => {
+                              const next = [...prev];
+                              const [moved] = next.splice(draggedColIndex, 1);
+                              next.splice(dragOverColIndex, 0, moved);
+                              return next;
+                            });
+                          }
+                          setDraggedColIndex(null);
+                          setDragOverColIndex(null);
+                        }}
+                        onDragEnd={() => { setDraggedColIndex(null); setDragOverColIndex(null); }}
+                        className={`flex items-center gap-2 px-4 py-2 hover:bg-slate-50 cursor-move transition-all ${draggedColIndex === index ? 'opacity-30 bg-slate-100' : ''} ${dragOverColIndex === index && draggedColIndex !== null && draggedColIndex !== index ? (index > draggedColIndex ? 'border-b-2 border-b-[#27619D]' : 'border-t-2 border-t-[#27619D]') : 'border-y-2 border-y-transparent'}`}
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-sm active:cursor-grabbing">drag_indicator</span>
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={!hiddenColumns.has(col.id)}
+                            onChange={() => {
+                              setHiddenColumns(prev => {
+                                const next = new Set(prev);
+                                if (next.has(col.id)) next.delete(col.id);
+                                else next.add(col.id);
+                                return next;
+                              });
+                            }}
+                            className="rounded border-slate-300 text-[#27619D] focus:ring-[#27619D]"
+                          />
+                          <span className="text-sm text-slate-700 select-none">{col.label}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-bold text-slate-500">Status:</label>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#27619D] shadow-sm cursor-pointer"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {loading ? (
@@ -287,147 +867,24 @@ const FormBackend = () => {
               <span className="material-symbols-outlined animate-spin text-3xl mb-3 inline-block">progress_activity</span>
               <p className="font-medium">Loading data...</p>
             </div>
-          ) : records.length === 0 ? (
+          ) : filteredRecords.length === 0 ? (
             <div className="p-12 text-center text-slate-400">
               <span className="material-symbols-outlined text-4xl mb-3 inline-block">inbox</span>
-              <p className="font-medium">No submissions yet.</p>
+              <p className="font-medium">{records.length > 0 ? 'No records match the selected status.' : 'No submissions yet.'}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/60 text-slate-500 text-sm uppercase tracking-wider">
+                  <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider border-b border-slate-200">
                     <th className="px-6 py-4 font-bold whitespace-nowrap">#</th>
-                    <th className="px-6 py-4 font-bold whitespace-nowrap">Date Submitted</th>
-                    {activeTab === '001' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Doc No</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Email</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Equipment Category</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Symptoms</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Detailed Description</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Asset ID</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Brand</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Model</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">S/N</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Purchase Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Caretaker</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Receive Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Repair Count</th>
-                      </>
-                    ) : activeTab === '002' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Appointment Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Time</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Location</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Details</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Prepare Tools</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Assess Equip</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Tools Prepared</th>
-                      </>
-                    ) : activeTab === '003' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Type</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Date of Use</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Eq Details</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: Asset ID</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: S/N</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Change: Prev User</th>
-                      </>
-                    ) : activeTab === '004' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Returner Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Return Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Asset ID</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Eq Details</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Cancel Usage: Asset ID</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Cancel Usage: Reason</th>
-                      </>
-                    ) : activeTab === '005' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Type</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Software</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Registered Prog</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Packet Details</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Start Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Expire Date</th>
-                      </>
-                    ) : activeTab === '006' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Type</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Job Title</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Date of Use</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reason</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Email</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Data Access Details</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Action Done</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Username</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">IT: Password</th>
-                      </>
-                    ) : activeTab === '007' ? (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">WR Number</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Request Date</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Equipment</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Applicant Name</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Department</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">JOB</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Phone</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Symptoms</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Requirements</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Remote Program</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Remote ID</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Appointment Time</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Reporter / Submitter</th>
-                        <th className="px-6 py-4 font-bold whitespace-nowrap">Detail</th>
-                      </>
-                    )}
-                    <th className="px-6 py-4 font-bold whitespace-nowrap">Photos</th>
-                    <th className="px-6 py-4 font-bold whitespace-nowrap">Status</th>
-                    <th className="px-6 py-4 font-bold whitespace-nowrap">PDF</th>
+                    {orderedColumns.map(col => (
+                      !hiddenColumns.has(col.id) && <th key={col.id} className="px-6 py-4 font-bold whitespace-nowrap">{col.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {records.map((record, index) => {
+                  {filteredRecords.map((record, index) => {
                     const attachments = getAttachments(record);
                     const status = (record.status as string) || 'pending';
                     const statusColor =
@@ -438,226 +895,67 @@ const FormBackend = () => {
                         : 'bg-amber-100 text-amber-700';
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50/40 transition-colors">
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
-                        <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                          {formatDate(record.createdAt)}
-                        </td>
-                        {activeTab === '001' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.docNo || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.name || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.reporter as any)?.email || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={getEquipmentCategoryText(record.equipmentCategory)}>{getEquipmentCategoryText(record.equipmentCategory)}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={getSymptomsText(record.issueDescription)}>{getSymptomsText(record.issueDescription)}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String((record.issueDescription as any)?.detailedDescription || '-')}>{String((record.issueDescription as any)?.detailedDescription || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.assetId || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.brand || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.model || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.serialNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.purchaseDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.caretaker || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.receiveDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String((record.asset as any)?.repairCount || '-')}</td>
-                          </>
-                        ) : activeTab === '002' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentTime || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.location || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.jobDetails || '-')}>{String(record.jobDetails || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.prepareTools === 'true' ? 'Yes' : 'No'}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.assessEquipment === 'true' ? 'Yes' : 'No'}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{record.toolsPrepared === 'true' ? 'Yes' : 'No'}</td>
-                          </>
-                        ) : activeTab === '003' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                              {record.reqType_new === 'true' ? 'New Equipment' : record.reqType_change === 'true' ? 'Change User' : '-'}
+                        {orderedColumns.map(col => {
+                          if (hiddenColumns.has(col.id)) return null;
+
+                          let cellContent: React.ReactNode;
+                          let isComponent = false;
+
+                          if (col.id === 'dateSubmitted') {
+                            cellContent = formatDate(record.createdAt);
+                          } else if (col.id === 'photos') {
+                            isComponent = true;
+                            cellContent = attachments.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {attachments.map((url, i) => (
+                                  <a
+                                    key={i}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm font-bold text-[#27619D] bg-[#C7E7FF]/40 px-3 py-1 rounded-lg hover:bg-[#C7E7FF] transition-colors whitespace-nowrap"
+                                  >
+                                    Photo {i + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : <span className="text-slate-400 text-sm">-</span>;
+                          } else if (col.id === 'status') {
+                            isComponent = true;
+                            cellContent = <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusColor}`}>{status}</span>;
+                          } else if (col.id === 'pdf') {
+                            isComponent = true;
+                            cellContent = (
+                              <button type="button" onClick={() => handleExportPDF(record, activeLabel)} className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm" title="Download / View PDF">
+                                <span className="material-symbols-outlined text-base">picture_as_pdf</span> Export
+                              </button>
+                            );
+                          } else if (col.id === 'delete') {
+                            isComponent = true;
+                            cellContent = (
+                              <button type="button" onClick={() => handleDeleteRecord(record.id)} className="flex items-center gap-1 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm" title="Delete Record">
+                                <span className="material-symbols-outlined text-base">delete</span>
+                              </button>
+                            );
+                          } else {
+                            cellContent = renderCellContent(col.id, record, activeTab);
+                          }
+
+                          const isTruncate = ['equipmentCategory', 'symptoms', 'detailedDescription', 'jobDetails', 'reason', 'cancelUsageReason', 'dataAccessDetails', 'requirements', 'detail'].includes(col.id);
+                          const isReporter = col.id === 'reporter';
+
+                          return (
+                            <td key={col.id} className={`px-6 py-4 ${isComponent ? '' : 'text-slate-700'}`}>
+                              {isComponent ? cellContent : (
+                                <div className={`${isTruncate ? 'max-w-[200px] truncate' : 'whitespace-nowrap'} ${isReporter ? 'font-medium' : ''}`} title={isTruncate ? String(cellContent) : undefined}>
+                                  {cellContent as React.ReactNode}
+                                </div>
+                              )}
                             </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.dateOfUse || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.eqComputer === 'true' && 'Computer',
-                                  record.eqPrinter === 'true' && 'Printer',
-                                  record.eqCctv === 'true' && 'CCTV',
-                                  record.eqRadio === 'true' && 'Radio',
-                                  record.eqMonitor === 'true' && 'Monitor',
-                                  record.eqOther === 'true' && 'Other'
-                               ].filter(Boolean).join(', ') || '-'} {record.eqQuantity ? `(Qty: ${record.eqQuantity})` : ''}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.assetId || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.serialNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.previousUser || '-')}</td>
-                          </>
-                        ) : activeTab === '004' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.returnerName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.returnDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.assetId || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.eqComputer === 'true' && 'Computer',
-                                  record.eqPrinter === 'true' && 'Printer',
-                                  record.eqCctv === 'true' && 'CCTV',
-                                  record.eqRadio === 'true' && 'Radio',
-                                  record.eqMonitor === 'true' && 'Monitor',
-                                  record.eqOther === 'true' && `Other (${record.eqOtherText || ''})`
-                               ].filter(Boolean).join(', ') || '-'} {record.eqQuantity ? `(Qty: ${record.eqQuantity})` : ''}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.cancelAssetId || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.cancelReason || '-')}>{String(record.cancelReason || '-')}</td>
-                          </>
-                        ) : activeTab === '005' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                              {record.reqType_new === 'true' ? 'New License' : record.reqType_renew === 'true' ? 'Renew License' : '-'}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.sw_office === 'true' && 'Office 365+',
-                                  record.sw_sketchup === 'true' && 'Sketchup 3D',
-                                  record.sw_autodesk === 'true' && 'Autodesk',
-                                  record.sw_adobe === 'true' && 'Adobe',
-                                  record.sw_other === 'true' && `Other (${record.sw_otherText || ''})`
-                               ].filter(Boolean).join(', ') || '-'}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_registeredProgram || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_packetDetails || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_startDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_expireDate || '-')}</td>
-                          </>
-                        ) : activeTab === '006' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.req_email === 'true' && 'Email',
-                                  record.req_storage === 'true' && 'Central Storage',
-                                  record.req_cctv === 'true' && 'CCTV Online'
-                               ].filter(Boolean).join(', ') || '-'}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobTitle || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.dateOfUse || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(record.reason || '-')}>{String(record.reason || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.email || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(`${record.dataAccessDetails || ''} ${record.dataAccessDetails_2 || ''}`)}>{String(`${record.dataAccessDetails || ''} ${record.dataAccessDetails_2 || ''}`).trim() || '-'}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_actionDone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.it_username || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                              {record.it_password ? '********' : '-'}
-                            </td>
-                          </>
-                        ) : activeTab === '007' ? (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.wrNumber || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.requestDate || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.eq_computer === 'true' && 'Computer/Notebook',
-                                  record.eq_printer === 'true' && 'Printer/Copier',
-                                  record.eq_radio === 'true' && 'Radio Comm',
-                                  record.eq_cctv === 'true' && 'CCTV',
-                                  record.eq_other === 'true' && 'Other'
-                               ].filter(Boolean).join(', ') || '-'}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.applicantName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.department || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.jobName || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.phone || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
-                               {[
-                                  record.symp_slow === 'true' && 'Slow/Laggy',
-                                  record.symp_software === 'true' && 'Install/Fix Software',
-                                  record.symp_check === 'true' && 'Basic Check',
-                                  record.symp_support === 'true' && 'Usage Support',
-                                  record.symp_other === 'true' && 'Other'
-                               ].filter(Boolean).join(', ') || '-'}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 max-w-[200px] truncate" title={String(`${record.requirements || ''} ${record.requirements_2 || ''} ${record.requirements_3 || ''}`)}>{String(`${record.requirements || ''} ${record.requirements_2 || ''} ${record.requirements_3 || ''}`).trim() || '-'}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.remoteProgram || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.remoteId || '-')}</td>
-                            <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{String(record.appointmentTime || '-')}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-6 py-4 text-slate-700 font-medium whitespace-nowrap">
-                              {getReporterName(record)}
-                            </td>
-                            <td className="px-6 py-4 text-slate-700 max-w-xs truncate">
-                              {getDetailText(activeTab, record)}
-                            </td>
-                          </>
-                        )}
-                        <td className="px-6 py-4">
-                          {attachments.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {attachments.map((url, i) => (
-                                <a
-                                  key={i}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm font-bold text-[#27619D] bg-[#C7E7FF]/40 px-3 py-1 rounded-lg hover:bg-[#C7E7FF] transition-colors"
-                                >
-                                  Photo {i + 1}
-                                </a>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 text-sm">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusColor}`}>
-                            {status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            type="button"
-                            onClick={() => handleExportPDF(record, activeLabel)}
-                            className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                            title="Download / View PDF"
-                          >
-                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                            Export
-                          </button>
-                        </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
@@ -667,6 +965,183 @@ const FormBackend = () => {
           )}
         </div>
       </div>
+
+      {showImportModal && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
+          <div className="absolute inset-0 bg-[#2c3437]/20 backdrop-blur-sm" onClick={() => setShowImportModal(false)} />
+          <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-200 w-full max-w-[90vw] p-8 max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Import Records to {formTabs.find(t => t.id === importTargetTab)?.label}</h2>
+              <button onClick={() => {
+                setShowImportModal(false);
+                setImportFile(null);
+                setImportPreview([]);
+                setImportErrors([]);
+                setCsvHeaders([]);
+                setCsvData([]);
+                setColumnMapping({});
+              }} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+                <span className="material-symbols-outlined text-slate-500">close</span>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-blue-600 text-xl">info</span>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-blue-900 mb-2 text-sm">CSV Format Requirements:</h3>
+                    <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                      <li>First row must contain headers. You can map them to the database fields below.</li>
+                      <li>Data will be imported into the selected form (<strong className="font-bold">{formTabs.find(t => t.id === importTargetTab)?.label}</strong>).</li>
+                      <li>If <code className="bg-blue-100 px-1 rounded">id</code> column is omitted, a unique ID will be auto-generated.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-slate-700 mb-2">Select Target Form:</label>
+                <select
+                  value={importTargetTab}
+                  onChange={(e) => setImportTargetTab(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#27619D] font-medium text-slate-700 cursor-pointer shadow-sm"
+                >
+                  {formTabs.map(tab => (
+                    <option key={tab.id} value={tab.id}>{tab.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="block">
+                <div className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-[#27619d] border-dashed rounded-xl appearance-none cursor-pointer hover:bg-slate-50 focus:outline-none">
+                  <div className="flex flex-col items-center space-y-2">
+                    <span className="material-symbols-outlined text-4xl text-[#27619d]">upload_file</span>
+                    <span className="font-medium text-[#27619d]">
+                      {importFile ? importFile.name : 'Click to select CSV file or drag and drop'}
+                    </span>
+                    <span className="text-xs text-slate-500">CSV files only</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+              </label>
+            </div>
+
+            {csvHeaders.length > 0 && (
+              <div className="mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                <h3 className="font-bold text-slate-800 mb-4 text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#27619d]">schema</span>
+                  Map CSV Columns to Database Fields
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {csvHeaders.map(header => (
+                    <div key={header} className="flex flex-col gap-1 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <span className="text-xs font-bold text-slate-500 truncate" title={header}>{header}</span>
+                      <select
+                        value={columnMapping[header] || ''}
+                        onChange={(e) => {
+                          const newMapping = { ...columnMapping, [header]: e.target.value };
+                          setColumnMapping(newMapping);
+                          updatePreview(csvHeaders, csvData, newMapping);
+                        }}
+                        className="w-full px-2 py-1.5 text-sm font-medium text-slate-700 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#27619D] focus:border-[#27619D] outline-none cursor-pointer"
+                      >
+                        <option value="">-- Ignore Column --</option>
+                        {getAvailableFields(importTargetTab).map(field => (
+                          <option key={field.id} value={field.id}>{field.label} ({field.id})</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {importErrors.length > 0 && (
+              <div className="mb-6 bg-red-50 border-red-200 border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-red-600 text-xl">error</span>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-red-900 mb-2 text-sm">Import Errors:</h3>
+                    <ul className="text-xs text-red-800 space-y-1">
+                      {importErrors.map((err, index) => (
+                        <li key={index}>• {err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {importPreview.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-bold text-slate-800 mb-3 text-sm">Preview ({importPreview.length} records)</h3>
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                      <tr>
+                        {Object.keys(importPreview[0]).slice(0, 6).map((key) => (
+                          <th key={key} className="px-3 py-2 font-bold text-slate-600">{key}</th>
+                        ))}
+                        {Object.keys(importPreview[0]).length > 6 && (
+                          <th className="px-3 py-2 font-bold text-slate-600">...</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {importPreview.slice(0, 100).map((record, index) => (
+                        <tr key={index} className="hover:bg-slate-50">
+                          {Object.values(record).slice(0, 6).map((val: any, i) => (
+                            <td key={i} className="px-3 py-2 truncate max-w-[150px]">{String(val)}</td>
+                          ))}
+                          {Object.keys(record).length > 6 && (
+                            <td className="px-3 py-2 text-slate-400">...</td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {importPreview.length > 100 && (
+                     <div className="px-3 py-2 text-center text-slate-500 bg-slate-50 border-t border-slate-100">
+                       Showing first 100 records
+                     </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportPreview([]);
+                  setImportErrors([]);
+                  setCsvHeaders([]);
+                  setCsvData([]);
+                  setColumnMapping({});
+                }}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportRecords}
+                disabled={importPreview.length === 0 || importErrors.length > 0}
+                className="flex-1 py-3 rounded-xl bg-[#625983] text-white font-bold text-sm shadow-lg shadow-[#625983]/20 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Import {importPreview.length} Records
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
