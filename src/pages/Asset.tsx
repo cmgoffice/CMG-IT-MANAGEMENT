@@ -267,6 +267,13 @@ const Asset = () => {
 
   const paginatedAssets = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+    if (currentPage >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  };
+
   const openAddModal = () => {
     setModalMode('add');
     setFormData(defaultForm);
@@ -885,18 +892,22 @@ const Asset = () => {
             >
               <span className="material-symbols-outlined text-sm">chevron_left</span>
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-4 py-1.5 rounded-lg text-xs border transition-colors shadow-sm ${
-                  currentPage === page
-                    ? 'bg-[#27619d] text-[#f8f8ff] font-bold border-[#27619d]'
-                    : 'bg-white/40 hover:bg-white text-[#2c3437] font-medium border-white/50'
-                }`}
-              >
-                {page}
-              </button>
+            {getPageNumbers().map((page, index) => (
+              page === '...' ? (
+                <span key={`ellipsis-${index}`} className="px-2 py-1.5 text-slate-400 font-medium">...</span>
+              ) : (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(page as number)}
+                  className={`px-4 py-1.5 rounded-lg text-xs border transition-colors shadow-sm ${
+                    currentPage === page
+                      ? 'bg-[#27619d] text-[#f8f8ff] font-bold border-[#27619d]'
+                      : 'bg-white/40 hover:bg-white text-[#2c3437] font-medium border-white/50'
+                  }`}
+                >
+                  {page}
+                </button>
+              )
             ))}
             <button
               className="p-2 rounded-lg bg-white/40 border border-white/50 hover:bg-white/80 transition-colors disabled:opacity-30 shadow-sm"

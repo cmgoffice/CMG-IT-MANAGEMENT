@@ -472,6 +472,8 @@ const FormBackend = () => {
   const [records, setRecords] = useState<FormRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -507,6 +509,7 @@ const FormBackend = () => {
     const activeForm = formTabs.find((t) => t.id === activeTab);
     if (!activeForm) return;
     setStatusFilter('pending'); // Reset filter when changing tabs
+    setCurrentPage(1); // Reset page when changing tabs
     setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
 
     // Set default column order
@@ -549,9 +552,30 @@ const FormBackend = () => {
 
   // Filter records based on selected status
   const filteredRecords = records.filter(record => {
+    if (statusFilter === 'All') return true;
     const currentStatus = (record.status as string)?.toLowerCase() || 'pending';
     return currentStatus === statusFilter.toLowerCase();
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+  const paginatedRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+    if (currentPage >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  };
 
   const getAvailableFields = (tabId: string) => {
     const formFields = tabColumnsConfig[tabId] || tabColumnsConfig['fallback'];
@@ -884,6 +908,7 @@ const FormBackend = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#27619D] shadow-sm cursor-pointer"
                 >
+                  <option value="All">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
@@ -903,6 +928,7 @@ const FormBackend = () => {
               <p className="font-medium">{records.length > 0 ? 'No records match the selected status.' : 'No submissions yet.'}</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -914,7 +940,8 @@ const FormBackend = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredRecords.map((record, index) => {
+                  {paginatedRecords.map((record, pageIndex) => {
+                    const index = (currentPage - 1) * pageSize + pageIndex;
                     const attachments = getAttachments(record);
                     const status = (record.status as string) || 'pending';
                     const statusColor =
@@ -992,6 +1019,46 @@ const FormBackend = () => {
                 </tbody>
               </table>
             </div>
+            {/* Pagination Controls */}
+            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+              <div className="text-sm text-slate-500 font-medium">
+                Showing {filteredRecords.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredRecords.length)} of {filteredRecords.length} records
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                {getPageNumbers().map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 py-1.5 text-slate-400 font-medium">...</span>
+                  ) : (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPage(page as number)}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors shadow-sm ${
+                        currentPage === page
+                          ? 'bg-[#27619d] text-white border-[#27619d]'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+                <button
+                  className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+              </div>
+            </div>
+            </>
           )}
         </div>
       </div>
