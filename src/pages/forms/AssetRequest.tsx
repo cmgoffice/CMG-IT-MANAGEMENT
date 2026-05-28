@@ -307,7 +307,7 @@ const AssetRequest = () => {
                 </section>
 
                 {/* Form Actions */}
-                <div className="pt-8 flex items-center justify-between">
+                <div className="pt-8 flex flex-wrap items-center justify-center gap-4">
                   <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
                   <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || isSuccess}>
                     {isSubmitting ? 'กำลังส่งข้อมูล...' : isSuccess ? 'ส่งสำเร็จ!' : 'ส่งข้อมูล'}

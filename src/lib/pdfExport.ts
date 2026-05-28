@@ -317,10 +317,14 @@ export async function exportFM002(record: FormRecord) {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM002-lib.pdf');
 
-    const applicantName = record.applicantName || record.reporter?.name || '';
-    const department = record.department || record.reporter?.department || '';
-    const jobTitle = record.jobTitle || record.reporter?.jobTitle || '';
-    const phone = record.phone || record.reporter?.phone || '';
+    const applicantName =
+      record.applicantName || record.reporter?.name || record.reporterName || record.name || record.requester || record.submittedBy || '';
+    const department =
+      record.department || record.reporter?.department || record.reporterDepartment || '';
+    const jobTitle =
+      record.jobTitle || record.reporter?.jobTitle || record.position || record.reporterJobTitle || '';
+    const phone =
+      record.phone || record.reporter?.phone || record.telephone || record.reporterPhone || '';
     const docNo = record.wrNumber || record.docNo || record.id || '';
     const requestDate = record.requestDate || record.appointmentDate || '';
 
@@ -782,6 +786,122 @@ export async function exportFM001Thai(record: FormRecord) {
 
     setTextField(form, 'Text26', requestDate);
     setTextField(form, 'Text27', reporter.name || '');
+
+    stripFieldBorders(form);
+
+    if (customFont) {
+      try {
+        form.updateFieldAppearances(customFont);
+      } catch (error) {
+        console.warn('Failed to update appearances with custom font:', error);
+      }
+    }
+
+    form.flatten();
+    await embedAttachments(pdfDoc, record.attachments, pictureRect);
+
+    const pdfBytesModified = await pdfDoc.save();
+    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-001'}.pdf`);
+  } catch (error: any) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF. Error: ' + (error?.message || error));
+  }
+}
+
+export async function exportFM001Unified(record: FormRecord) {
+  try {
+    const { pdfDoc, form, customFont } = await loadPdfResources('/FM001-lib.pdf');
+
+    const docNo = record.docNo || record.wrNumber || record.id || '';
+    const requestDate = record.requestDate || record.dateOfUse || '';
+    const reporter = typeof record.reporter === 'object' && record.reporter ? record.reporter : {};
+    const equipment = typeof record.equipmentCategory === 'object' && record.equipmentCategory ? record.equipmentCategory : {};
+    const symptom = typeof record.issueDescription === 'object' && record.issueDescription ? record.issueDescription : {};
+    const asset = typeof record.asset === 'object' && record.asset ? record.asset : {};
+    const equipmentText = typeof record.equipmentCategory === 'string' ? record.equipmentCategory : '';
+    const symptomText =
+      typeof record.issueDescription === 'string'
+        ? record.issueDescription
+        : typeof record.symptoms === 'string'
+          ? record.symptoms
+          : '';
+
+    const hasValue = (...values: unknown[]) => values.some((value) => isChecked(value));
+    const textIncludes = (value: string, needle: string) => value.toLowerCase().includes(needle.toLowerCase());
+
+    const reporterName =
+      reporter.name || record.reporterName || record.applicantName || record.name || record.submittedBy || '';
+    const reporterDepartment = reporter.department || record.department || record.reporterDepartment || '';
+    const reporterJobTitle = reporter.jobTitle || record.jobTitle || record.position || record.reporterJobTitle || '';
+    const reporterPhone = reporter.phone || record.phone || record.telephone || record.reporterPhone || '';
+
+    const eqComputer = hasValue(equipment.computer, (equipment as any)['คอมพิวเตอร์/โน๊ตบุ๊ค'], record.eqComputer, record.eq_computer)
+      || textIncludes(equipmentText, 'คอมพิวเตอร์');
+    const eqPrinter = hasValue(equipment.printer, (equipment as any)['เครื่องพิมพ์/ถ่ายเอกสาร'], record.eqPrinter, record.eq_printer)
+      || textIncludes(equipmentText, 'เครื่องพิมพ์');
+    const eqRadio = hasValue(equipment.radio, (equipment as any)['วิทยุสื่อสาร'], record.eqRadio, record.eq_radio)
+      || textIncludes(equipmentText, 'วิทยุ');
+    const eqCctv = hasValue(equipment.cctv, (equipment as any)['กล้องวงจรปิด'], record.eqCctv, record.eq_cctv)
+      || textIncludes(equipmentText, 'กล้องวงจรปิด');
+    const eqOther = hasValue(equipment.other, (equipment as any)['อื่นๆ'], record.eqOther, record.eq_other)
+      || textIncludes(equipmentText, 'อื่น');
+
+    const sympWontTurnOn = hasValue(symptom.wontTurnOn, (symptom as any)['เปิดเครื่องไม่ติด'], record.symptomWontTurnOn)
+      || textIncludes(symptomText, 'เปิดเครื่องไม่ติด');
+    const sympSlow = hasValue(symptom.slow, (symptom as any)['เครื่องช้า/กระตุก'], record.symptomSlow, record.symp_slow)
+      || textIncludes(symptomText, 'ช้า')
+      || textIncludes(symptomText, 'กระตุก');
+    const sympNoPower = hasValue(symptom.noPower, (symptom as any)['ไฟไม่เข้า'], record.symptomNoPower)
+      || textIncludes(symptomText, 'ไฟไม่เข้า');
+    const sympBroken = hasValue(symptom.broken, (symptom as any)['แตก/หัก'], record.symptomBroken)
+      || textIncludes(symptomText, 'แตก')
+      || textIncludes(symptomText, 'หัก');
+    const sympOther = hasValue(symptom.other, (symptom as any)['อื่นๆ'], record.symptomOther, record.symp_other)
+      || textIncludes(symptomText, 'อื่น');
+
+    const assetId = asset.assetId || record.assetId || record.assetNumber || record.registrationNumber || record.assetCode || '';
+    const assetBrand = asset.brand || record.brand || record.assetBrand || '';
+    const assetModel = asset.model || record.model || record.assetModel || '';
+    const assetSerial = asset.serialNumber || record.serialNumber || record.assetSerial || record.sn || '';
+    const assetPurchaseDate = asset.purchaseDate || record.purchaseDate || record.assetPurchaseDate || '';
+    const assetRepairCount = asset.repairCount || record.repairCount || '';
+    const assetReceiveDate = asset.receiveDate || record.receiveDate || record.assetReceiveDate || '';
+    const assetCaretaker = asset.caretaker || record.caretaker || record.assetCaretaker || '';
+
+    setTextField(form, '\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48 WR', docNo);
+    setTextField(form, '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48', requestDate);
+
+    setTextField(form, '\u0e1c\u0e39\u0e49\u0e41\u0e08\u0e49\u0e07\u0e0b\u0e48\u0e2d\u0e21', reporterName);
+    setTextField(form, '\u0e1d\u0e48\u0e32\u0e22', reporterDepartment);
+    setTextField(form, 'JOB', reporterJobTitle);
+    setTextField(form, '\u0e40\u0e1a\u0e2d\u0e23\u0e4c\u0e42\u0e17\u0e23', reporterPhone);
+
+    setCheckField(form, '\u0e04\u0e2d\u0e21\u0e1e\u0e34\u0e27\u0e40\u0e15\u0e2d\u0e23\u0e4c/\u0e42\u0e19\u0e4a\u0e15\u0e1a\u0e38\u0e4a\u0e04', eqComputer);
+    setCheckField(form, '\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e1e\u0e34\u0e21\u0e1e\u0e4c/\u0e16\u0e48\u0e32\u0e22\u0e40\u0e2d\u0e01\u0e2a\u0e32\u0e23', eqPrinter);
+    setCheckField(form, '\u0e27\u0e34\u0e17\u0e22\u0e38\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23', eqRadio);
+    setCheckField(form, '\u0e01\u0e25\u0e49\u0e2d\u0e07\u0e27\u0e07\u0e08\u0e23\u0e1b\u0e34\u0e14', eqCctv);
+    setCheckField(form, 'Text7', eqOther);
+
+    setCheckField(form, '\u0e40\u0e1b\u0e34\u0e14\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e44\u0e21\u0e48\u0e15\u0e34\u0e14', sympWontTurnOn);
+    setCheckField(form, 'Text13', sympSlow);
+    setCheckField(form, 'Text14', sympNoPower);
+    setCheckField(form, 'Text15', sympBroken);
+    setCheckField(form, 'Text16', sympOther);
+    setTextField(form, 'reason', symptom.detailedDescription || record.detailedDescription || symptomText || '');
+
+    const pictureRect = captureAndRemoveField(form, 'picture');
+
+    setTextField(form, '\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e15\u0e31\u0e27\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07', assetId);
+    setTextField(form, 'Text18', assetBrand);
+    setTextField(form, 'Text19', assetModel);
+    setTextField(form, 'Text20', assetPurchaseDate);
+    setTextField(form, 'Text21', assetSerial);
+    setTextField(form, 'Text22', assetRepairCount);
+    setTextField(form, 'Text23', assetReceiveDate);
+    setTextField(form, 'Text24', assetCaretaker);
+
+    setTextField(form, 'Text26', requestDate);
+    setTextField(form, 'Text27', reporterName);
 
     stripFieldBorders(form);
 

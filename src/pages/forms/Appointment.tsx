@@ -60,10 +60,6 @@ const Appointment = () => {
     e.target.value = '';
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!userProfile) return alert('Please login first');
@@ -323,14 +319,6 @@ const Appointment = () => {
                         {attachments.map((attachment, index) => (
                           <div key={`${attachment.url}-${index}`} className="relative group rounded-lg overflow-hidden border border-white/40 shadow-sm bg-white/40">
                             <img src={attachment.url} alt={attachment.name} className="w-full h-32 object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeAttachment(index)}
-                              className="absolute top-1 right-1 bg-error/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              aria-label={`Remove ${attachment.name}`}
-                            >
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
                           </div>
                         ))}
                       </div>
@@ -364,7 +352,7 @@ const Appointment = () => {
                   </div>
                 </section>
 
-                <div className="pt-8 flex items-center justify-between">
+                <div className="pt-8 flex flex-wrap items-center justify-center gap-4">
                   <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
                   <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || isSuccess || uploading}>
                     {isSubmitting ? 'กำลังส่งข้อมูล...' : isSuccess ? 'ส่งสำเร็จ!' : uploading ? 'กำลังอัปโหลดรูป...' : 'ส่งข้อมูล'}

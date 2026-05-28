@@ -4,7 +4,7 @@ import { collection, query, onSnapshot, Timestamp, doc, setDoc, deleteDoc, write
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { exportFM001Thai, exportFM002, exportFM003, exportFM004, exportFM005, exportFM006, exportFM007 } from '../lib/pdfExport';
+import { exportFM001Unified, exportFM002, exportFM003, exportFM004, exportFM005, exportFM006, exportFM007 } from '../lib/pdfExport';
 
 const APP_NAME = 'CMG-IT-MANAGEMENT';
 
@@ -348,7 +348,7 @@ function renderCellContent(colId: string, record: any, activeTab: string): strin
 
 async function handleExportPDF(record: FormRecord, formLabel: string) {
   if (formLabel.includes('FM-IT-001')) {
-    await exportFM001Thai(record);
+    await exportFM001Unified(record);
     return;
   }
 
@@ -488,6 +488,7 @@ const FormBackend = () => {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -498,6 +499,19 @@ const FormBackend = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!previewImageUrl) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewImageUrl(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewImageUrl]);
 
   const isMasterAdmin = currentUser && (
     Array.isArray(currentUser.role)
@@ -967,15 +981,14 @@ const FormBackend = () => {
                             cellContent = attachments.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {attachments.map((url, i) => (
-                                  <a
+                                  <button
+                                    type="button"
                                     key={i}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    onClick={() => setPreviewImageUrl(url)}
                                     className="text-sm font-bold text-[#27619D] bg-[#C7E7FF]/40 px-3 py-1 rounded-lg hover:bg-[#C7E7FF] transition-colors whitespace-nowrap"
                                   >
                                     Photo {i + 1}
-                                  </a>
+                                  </button>
                                 ))}
                               </div>
                             ) : <span className="text-slate-400 text-sm">-</span>;
@@ -1062,6 +1075,47 @@ const FormBackend = () => {
           )}
         </div>
       </div>
+
+      {previewImageUrl && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99998 }}>
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setPreviewImageUrl(null)} />
+          <div className="relative w-full max-w-5xl">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/10 bg-black/60 px-5 py-4">
+                <h2 className="text-base font-bold text-white">Photo Preview</h2>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageUrl(null)}
+                  className="rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                  aria-label="Close preview"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+              <div className="flex max-h-[75vh] items-center justify-center bg-black p-4">
+                <img src={previewImageUrl} alt="Preview" className="max-h-[70vh] w-auto max-w-full rounded-2xl object-contain" />
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 bg-black/60 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageUrl(null)}
+                  className="min-w-[140px] rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/20"
+                >
+                  Cancel
+                </button>
+                <a
+                  href={previewImageUrl}
+                  download
+                  className="min-w-[140px] rounded-xl bg-[#27619D] px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#1f4f80]"
+                >
+                  Download
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {showImportModal && createPortal(
         <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>

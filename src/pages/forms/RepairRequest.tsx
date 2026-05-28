@@ -120,10 +120,6 @@ const RepairRequest = () => {
     e.target.value = '';
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userProfile) {
@@ -422,13 +418,6 @@ const RepairRequest = () => {
                         {attachments.map((a, i) => (
                           <div key={i} className="relative group rounded-lg overflow-hidden border border-white/40 shadow-sm">
                             <img src={a.url} alt={a.name} className="w-full h-32 object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeAttachment(i)}
-                              className="absolute top-1 right-1 bg-error/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
                           </div>
                         ))}
                       </div>
@@ -461,7 +450,7 @@ const RepairRequest = () => {
                   </div>
                 </section>
                 {/*  Form Actions  */}
-                <div className="pt-8 flex items-center justify-between">
+                <div className="pt-8 flex flex-wrap items-center justify-center gap-4">
                   <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
                   <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting}>
                     {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อมูล'}
