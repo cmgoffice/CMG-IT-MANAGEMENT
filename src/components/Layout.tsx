@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-
+import LiveChat from './LiveChat';
 const Layout = () => {
   const { userProfile, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const Layout = () => {
     { to: '/equipment', label: 'Equipment', icon: 'devices' },
     { to: '/projects', label: 'Projects', icon: 'folder_open' },
     { to: '/forms', label: 'IT Forms', icon: 'description' },
-    { to: '/logs', label: 'Logs', icon: 'receipt_long' },
+    ...(userProfile ? [{ to: '/logs', label: 'Logs', icon: 'receipt_long' }] : []),
   ];
 
   const isMasterAdmin = Array.isArray(userProfile?.role) 
@@ -40,7 +40,7 @@ const Layout = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const openUpdateProfile = () => {
@@ -106,32 +106,42 @@ const Layout = () => {
         <div className="flex items-center gap-6 relative">
           <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-[#C7E7FF]/50 p-3 rounded-full transition-colors text-[30px]">notifications</span>
           <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-[#C7E7FF]/50 p-3 rounded-full transition-colors text-[30px]">settings</span>
-          <div className="relative">
-            <img
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-12 h-12 rounded-full border-2 border-primary-container object-cover cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-              src={userProfile?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop"}
-              alt="Profile"
-            />
-            {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-slate-100 z-[10000]">
-                <button 
-                  onClick={openUpdateProfile}
-                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-xl">person</span>
-                  Update Profile
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-error hover:bg-error-container/20 transition-colors flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-xl">logout</span>
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
+          {userProfile ? (
+            <div className="relative">
+              <img
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="w-12 h-12 rounded-full border-2 border-primary-container object-cover cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                src={userProfile.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop"}
+                alt="Profile"
+              />
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-slate-100 z-[10000]">
+                  <button 
+                    onClick={openUpdateProfile}
+                    className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-xl">person</span>
+                    Update Profile
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-error hover:bg-error-container/20 transition-colors flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-xl">logout</span>
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-6 py-2.5 rounded-xl font-bold bg-[#27619D] text-white hover:bg-[#1f4e7d] transition-colors shadow-md shadow-[#27619D]/30 flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl">login</span>
+              Login
+            </button>
+          )}
         </div>
       </nav>
 
@@ -146,12 +156,18 @@ const Layout = () => {
                 src={userProfile?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop"}
                 alt="Profile"
               />
-              <div className="text-lg font-bold text-slate-800 font-display leading-tight">{userProfile?.firstName} {userProfile?.lastName}</div>
+              <div className="text-lg font-bold text-slate-800 font-display leading-tight">
+                {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Guest'}
+              </div>
               <div className="text-sm text-slate-500 font-body mt-1">
-                {Array.isArray(userProfile?.role) ? userProfile.role.map((r: string) => (
-                  <span key={r} className="inline-block bg-[#C7E7FF] text-[#27619D] px-2 py-0.5 rounded-full text-xs mr-1 font-semibold">{r}</span>
-                )) : userProfile?.role && (
-                  <span className="inline-block bg-[#C7E7FF] text-[#27619D] px-2 py-0.5 rounded-full text-xs mr-1 font-semibold">{userProfile.role as unknown as string}</span>
+                {userProfile ? (
+                  Array.isArray(userProfile.role) ? userProfile.role.map((r: string) => (
+                    <span key={r} className="inline-block bg-[#C7E7FF] text-[#27619D] px-2 py-0.5 rounded-full text-xs mr-1 font-semibold">{r}</span>
+                  )) : userProfile.role && (
+                    <span className="inline-block bg-[#C7E7FF] text-[#27619D] px-2 py-0.5 rounded-full text-xs mr-1 font-semibold">{userProfile.role as unknown as string}</span>
+                  )
+                ) : (
+                  <span className="inline-block bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs font-semibold">Read Only</span>
                 )}
               </div>
             </div>
@@ -326,6 +342,8 @@ const Layout = () => {
           </div>
         </div>
       )}
+
+      <LiveChat />
     </div>
   );
 };

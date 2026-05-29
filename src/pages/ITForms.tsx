@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const ITForms = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { userProfile } = useAuth();
 
   // ข้อมูลฟอร์มทั้งหมดเก็บไว้ใน Array เพื่อลดความซ้ำซ้อนและให้ดูแลง่ายขึ้น
   const formsData = [
@@ -107,9 +109,11 @@ const ITForms = () => {
                 <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded w-max mb-2">{form.id}</span>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">{form.title}</h3>
                 <p className="text-sm text-slate-700 leading-relaxed mb-6 flex-1">{form.desc}</p>
-                <button className="w-full py-2.5 bg-white border-2 border-indigo-400 text-indigo-600 font-semibold rounded-full group-hover:border-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                  Open Form
-                </button>
+                {userProfile && (
+                  <button className="w-full py-2.5 bg-white border-2 border-indigo-400 text-indigo-600 font-semibold rounded-full group-hover:border-transparent group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+                    Open Form
+                  </button>
+                )}
               </Link>
             ))
           ) : (

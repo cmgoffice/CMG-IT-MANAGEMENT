@@ -375,17 +375,19 @@ const Equipment = () => {
                         )}
                       </div>
                     </div>
-                    <div className="pt-2">
-                      <span className="text-[#596064] text-xs mb-2 block font-body">Quick Actions</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#27619d] transition-all border border-white/50 shadow-sm font-body">
-                          Request Maintenance
-                        </button>
-                        <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#2c3437] transition-all border border-white/50 shadow-sm font-body">
-                          Audit Device
-                        </button>
+                    {userProfile && (
+                      <div className="pt-2">
+                        <span className="text-[#596064] text-xs mb-2 block font-body">Quick Actions</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#27619d] transition-all border border-white/50 shadow-sm font-body">
+                            Request Maintenance
+                          </button>
+                          <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#2c3437] transition-all border border-white/50 shadow-sm font-body">
+                            Audit Device
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -611,17 +613,19 @@ const Equipment = () => {
                         <span className="text-[#2c3437] font-bold text-sm font-body">Sarah Jenkins</span>
                       </div>
                     </div>
-                    <div className="pt-2">
-                      <span className="text-[#596064] text-xs mb-2 block font-body">Quick Actions</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#27619d] transition-all border border-white/50 shadow-sm font-body">
-                          Request Maintenance
-                        </button>
-                        <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#2c3437] transition-all border border-white/50 shadow-sm font-body">
-                          Audit Device
-                        </button>
+                    {userProfile && (
+                      <div className="pt-2">
+                        <span className="text-[#596064] text-xs mb-2 block font-body">Quick Actions</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#27619d] transition-all border border-white/50 shadow-sm font-body">
+                            Request Maintenance
+                          </button>
+                          <button className="bg-white/60 hover:bg-white py-2 rounded-lg text-xs font-semibold text-[#2c3437] transition-all border border-white/50 shadow-sm font-body">
+                            Audit Device
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 

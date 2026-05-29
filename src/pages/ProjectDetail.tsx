@@ -24,7 +24,7 @@ type Project = {
 
 type Evaluation = {
   projectId: string;
-  evaluatorEmail: string;
+  evaluatorEmail?: string;
   evaluatorName: string;
   ratings: {
     q1: number;
@@ -89,14 +89,16 @@ const ProjectDetail = () => {
     setEvaluations(evals);
     
     // Check if current user has evaluated
-    if (userProfile?.email) {
+    if (localStorage.getItem(`evaluated_${id}`) === 'true') {
+      setHasEvaluated(true);
+    } else if (userProfile?.email) {
       const userEval = evals.find((e) => e.evaluatorEmail === userProfile.email);
       setHasEvaluated(!!userEval);
     }
   };
 
   const handleSubmitEvaluation = async () => {
-    if (!id || !userProfile?.email) return;
+    if (!id) return;
     
     // Validate all ratings
     if (Object.values(ratings).some((r) => r === 0)) {
@@ -106,16 +108,19 @@ const ProjectDetail = () => {
 
     const evaluation: Evaluation = {
       projectId: id,
-      evaluatorEmail: userProfile.email,
-      evaluatorName: `${userProfile.firstName} ${userProfile.lastName}`,
+      evaluatorName: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Anonymous',
       ratings,
       comment: comment.trim(),
       submittedAt: new Date().toISOString(),
     };
+    if (userProfile?.email) {
+      evaluation.evaluatorEmail = userProfile.email;
+    }
 
-    const evalId = `${id}_${userProfile.email}`;
+    const evalId = userProfile?.email ? `${id}_${userProfile.email}` : `${id}_${Date.now()}`;
     await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'projectEvaluations', evalId), evaluation);
     
+    localStorage.setItem(`evaluated_${id}`, 'true');
     setShowEvalForm(false);
     setRatings({ q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 });
     setComment('');

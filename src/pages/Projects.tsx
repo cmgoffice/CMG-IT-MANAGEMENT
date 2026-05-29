@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
+import { useAuth } from '../contexts/AuthContext';
 
 type Project = {
   id: string;
@@ -70,6 +71,7 @@ const compressImage = (file: File): Promise<string> => {
 
 const Projects = () => {
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -314,13 +316,15 @@ const Projects = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <button
-              onClick={openAddModal}
-              className="flex items-center justify-center gap-2 bg-[#27619d] text-white px-6 py-3 rounded-xl font-bold text-[15px] shadow-lg shadow-[#27619d]/20 hover:bg-[#1e4d7a] transition-all hover:-translate-y-0.5 active:translate-y-0 font-body shrink-0"
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              New Project
-            </button>
+            {userProfile && (
+              <button
+                onClick={openAddModal}
+                className="flex items-center justify-center gap-2 bg-[#27619d] text-white px-6 py-3 rounded-xl font-bold text-[15px] shadow-lg shadow-[#27619d]/20 hover:bg-[#1e4d7a] transition-all hover:-translate-y-0.5 active:translate-y-0 font-body shrink-0"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                New Project
+              </button>
+            )}
           </div>
         </header>
 
@@ -350,14 +354,14 @@ const Projects = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.length === 0 && (
               <div className="col-span-full text-center py-20 bg-white/40 rounded-3xl border border-dashed border-slate-300">
                 <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
                 <p className="text-slate-500 font-bold font-body text-lg">No projects found.</p>
               </div>
             )}
-          {filtered.map((project) => (
+            {filtered.map((project) => (
             <div
               key={project.id}
               className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col"
@@ -365,88 +369,95 @@ const Projects = () => {
             >
               {/* Cover Image */}
               {project.images && project.images.length > 0 ? (
-                <div className="w-full aspect-video overflow-hidden relative shrink-0 bg-slate-100 border-b border-slate-100">
+                <div className="w-full aspect-[16/7] overflow-hidden relative shrink-0 bg-slate-100 border-b border-slate-100">
                   <img src={project.images[0]} alt={project.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
                 </div>
               ) : (
-                <div className="w-full aspect-video bg-slate-50 relative overflow-hidden flex items-center justify-center shrink-0 group-hover:bg-slate-100 transition-colors border-b border-slate-100">
-                  <span className="material-symbols-outlined text-5xl text-slate-300">imagesmode</span>
+                <div className="w-full aspect-[16/7] bg-slate-50 relative overflow-hidden flex items-center justify-center shrink-0 group-hover:bg-slate-100 transition-colors border-b border-slate-100">
+                  <span className="material-symbols-outlined text-4xl text-slate-300">imagesmode</span>
                 </div>
               )}
 
-              <div className="p-6 md:p-8 flex flex-col flex-1">
-                <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-[1.3rem] font-extrabold text-slate-800 mb-1.5 font-display leading-tight">{project.name}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-body">{project.id}</p>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditModal(project);
-                    }}
-                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                    title="Edit"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProject(project);
-                      setShowDeleteModal(true);
-                    }}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
-                </div>
-              </div>
-
-              <p className="text-[14px] text-slate-500 mb-6 line-clamp-2 font-body flex-1 leading-relaxed">{project.description}</p>
-
-              <div className="flex flex-wrap gap-2 mb-6">
-                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${statusStyles[project.status] || 'bg-slate-100 text-slate-600'}`}>
-                  {project.status}
-                </span>
-                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${priorityStyles[project.priority] || 'bg-slate-100 text-slate-600'}`}>
-                  {project.priority} Priority
-                </span>
-                {project.category && (
-                  <span className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-200 bg-white text-slate-600">
-                    {project.category}
-                  </span>
-                )}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 font-body">
-                  <span>Progress</span>
-                  <span className="text-[#27619d]">{project.progress || 0}%</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-[#27619d] h-1.5 rounded-full transition-all duration-700 ease-out"
-                    style={{ width: `${project.progress || 0}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[12px] font-bold text-slate-500 font-body pt-4 border-t border-slate-100 mt-2">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">group</span>
-                  <span>{project.team?.length || 0} members</span>
-                </div>
-                {project.endDate && (
-                  <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">event</span>
-                    <span>{new Date(project.endDate).toLocaleDateString()}</span>
+              <div className="p-4 md:p-5 flex flex-col flex-1">
+                {/* Title + Actions */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h3 className="text-[1rem] font-extrabold text-slate-800 mb-1 font-display leading-tight">{project.name}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-body">{project.id}</p>
                   </div>
-                )}
+                  {userProfile && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(project);
+                        }}
+                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProject(project);
+                          setShowDeleteModal(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <p className="text-[12px] text-slate-500 mb-3 line-clamp-2 font-body flex-1 leading-relaxed">{project.description}</p>
+
+                {/* Badges */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${statusStyles[project.status] || 'bg-slate-100 text-slate-600'}`}>
+                    {project.status}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${priorityStyles[project.priority] || 'bg-slate-100 text-slate-600'}`}>
+                    {project.priority} Priority
+                  </span>
+                  {project.category && (
+                    <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border border-slate-200 bg-white text-slate-600">
+                      {project.category}
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-body">
+                    <span>Progress</span>
+                    <span className="text-[#27619d]">{project.progress || 0}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                    <div
+                      className="bg-[#27619d] h-1 rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${project.progress || 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 font-body pt-3 border-t border-slate-100 mt-1">
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">group</span>
+                    <span>{project.team?.length || 0} members</span>
+                  </div>
+                  {project.endDate && (
+                    <div className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">event</span>
+                      <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}

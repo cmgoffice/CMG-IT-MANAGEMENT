@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, onSnapshot, Timestamp, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, Timestamp, doc, setDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -13,6 +13,22 @@ interface FormRecord {
   [key: string]: unknown;
 }
 
+interface EvaluationRecord {
+  id: string;
+  projectId: string;
+  projectName?: string;
+  evaluatorEmail?: string;
+  evaluatorName: string;
+  ratings: { q1: number; q2: number; q3: number; q4: number; q5: number };
+  comment: string;
+  submittedAt: string;
+}
+
+interface ProjectRef {
+  id: string;
+  name: string;
+}
+
 const formTabs = [
   { id: '001', label: 'FM-IT-001', collection: 'repairRequests' },
   { id: '002', label: 'FM-IT-002', collection: 'appointments' },
@@ -21,6 +37,7 @@ const formTabs = [
   { id: '005', label: 'FM-IT-005', collection: 'licenseRequests' },
   { id: '006', label: 'FM-IT-006', collection: 'userRegistrations' },
   { id: '007', label: 'FM-IT-007', collection: 'remoteSupports' },
+  { id: 'evaluation', label: 'Evaluation', collection: '' },
 ];
 
 const tabColumnsConfig: Record<string, { id: string; label: string }[]> = {
@@ -493,6 +510,9 @@ const FormBackend = () => {
   const [isEditingRecord, setIsEditingRecord] = useState(false);
   const [editFormData, setEditFormData] = useState<Record<string, any>>({});
   const [isSavingRecord, setIsSavingRecord] = useState(false);
+  const [evaluationRecords, setEvaluationRecords] = useState<EvaluationRecord[]>([]);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalSearchQuery, setEvalSearchQuery] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -524,6 +544,40 @@ const FormBackend = () => {
   );
 
   useEffect(() => {
+    if (activeTab === 'evaluation') {
+      // Load evaluations from Firestore
+      const loadEvaluations = async () => {
+        setEvalLoading(true);
+        try {
+          const [evalsSnap, projectsSnap] = await Promise.all([
+            getDocs(collection(db, `${APP_NAME}/root/projectEvaluations`)),
+            getDocs(collection(db, `${APP_NAME}/root/projects`)),
+          ]);
+
+          const projectMap: Record<string, string> = {};
+          projectsSnap.docs.forEach((d) => {
+            const data = d.data() as ProjectRef;
+            projectMap[d.id] = data.name || d.id;
+          });
+
+          const evals: EvaluationRecord[] = evalsSnap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<EvaluationRecord, 'id'>),
+            projectName: projectMap[(d.data() as EvaluationRecord).projectId] || (d.data() as EvaluationRecord).projectId,
+          }));
+
+          evals.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+          setEvaluationRecords(evals);
+        } catch (err) {
+          console.error('Error loading evaluations:', err);
+        } finally {
+          setEvalLoading(false);
+        }
+      };
+      loadEvaluations();
+      return;
+    }
+
     const activeForm = formTabs.find((t) => t.id === activeTab);
     if (!activeForm) return;
     setStatusFilter('pending'); // Reset filter when changing tabs
@@ -877,17 +931,177 @@ const FormBackend = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${
                 activeTab === tab.id
-                  ? 'bg-[#27619D] text-white shadow-md shadow-[#27619D]/30'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                  ? tab.id === 'evaluation'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-400/30'
+                    : 'bg-[#27619D] text-white shadow-md shadow-[#27619D]/30'
+                  : tab.id === 'evaluation'
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
+              {tab.id === 'evaluation' && (
+                <span className="material-symbols-outlined text-sm align-middle mr-1" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+              )}
               {tab.label}
             </button>
           ))}
         </div>
 
+        {/* ====== Evaluation Tab Content ====== */}
+        {activeTab === 'evaluation' && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                <h3 className="font-bold text-lg text-on-surface">Project Evaluation</h3>
+                <span className="text-sm text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                  {evaluationRecords.filter(e => !evalSearchQuery || e.projectName?.toLowerCase().includes(evalSearchQuery.toLowerCase()) || e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())).length} record(s)
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                  <input
+                    type="text"
+                    placeholder="ค้นหาโปรเจ็ค หรือผู้ประเมิน..."
+                    value={evalSearchQuery}
+                    onChange={(e) => setEvalSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm w-64"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setEvalLoading(true);
+                    const loadEvals = async () => {
+                      try {
+                        const [evalsSnap, projectsSnap] = await Promise.all([
+                          getDocs(collection(db, `${APP_NAME}/root/projectEvaluations`)),
+                          getDocs(collection(db, `${APP_NAME}/root/projects`)),
+                        ]);
+                        const projectMap: Record<string, string> = {};
+                        projectsSnap.docs.forEach((d) => { projectMap[d.id] = (d.data() as ProjectRef).name || d.id; });
+                        const evals: EvaluationRecord[] = evalsSnap.docs.map((d) => ({
+                          id: d.id,
+                          ...(d.data() as Omit<EvaluationRecord, 'id'>),
+                          projectName: projectMap[(d.data() as EvaluationRecord).projectId] || (d.data() as EvaluationRecord).projectId,
+                        }));
+                        evals.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+                        setEvaluationRecords(evals);
+                      } finally { setEvalLoading(false); }
+                    };
+                    loadEvals();
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-sm">refresh</span>
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {evalLoading ? (
+              <div className="p-12 text-center text-slate-500">
+                <span className="material-symbols-outlined animate-spin text-3xl mb-3 inline-block">progress_activity</span>
+                <p className="font-medium">Loading evaluations...</p>
+              </div>
+            ) : (() => {
+              const filtered = evaluationRecords.filter(e =>
+                !evalSearchQuery ||
+                e.projectName?.toLowerCase().includes(evalSearchQuery.toLowerCase()) ||
+                e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())
+              );
+              if (filtered.length === 0) {
+                return (
+                  <div className="p-12 text-center text-slate-400">
+                    <span className="material-symbols-outlined text-4xl mb-3 inline-block" style={{ fontVariationSettings: "'FILL' 1" }}>star_border</span>
+                    <p className="font-medium">{evalSearchQuery ? 'ไม่พบผลการค้นหา' : 'ยังไม่มีการประเมิน'}</p>
+                  </div>
+                );
+              }
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">#</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Project</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Evaluator</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Score (Avg)</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q1</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q2</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q3</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q4</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q5</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">วันที่ประเมิน</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filtered.map((ev, idx) => {
+                        const avg = ev.ratings ? ((ev.ratings.q1 + ev.ratings.q2 + ev.ratings.q3 + ev.ratings.q4 + ev.ratings.q5) / 5) : 0;
+                        const avgDisplay = avg.toFixed(1);
+                        const pct = Math.round((avg / 5) * 100);
+                        const scoreColor = pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-[#27619d]' : pct >= 40 ? 'text-amber-600' : 'text-rose-600';
+                        const scoreBg = pct >= 80 ? 'bg-emerald-50 border-emerald-200' : pct >= 60 ? 'bg-blue-50 border-blue-200' : pct >= 40 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200';
+                        const barColor = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-[#27619d]' : pct >= 40 ? 'bg-amber-400' : 'bg-rose-500';
+                        const renderStarScore = (score: number) => (
+                          <div className="flex items-center gap-0.5">
+                            {[1,2,3,4,5].map(s => (
+                              <span key={s} className={`material-symbols-outlined text-sm ${s <= score ? 'text-amber-400' : 'text-slate-200'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                            ))}
+                            <span className="text-xs font-bold text-slate-500 ml-1 leading-none">{score}</span>
+                          </div>
+                        );
+                        return (
+                          <tr key={ev.id} className="hover:bg-amber-50/30 transition-colors">
+                            <td className="px-3 py-1.5 text-slate-500 font-medium whitespace-nowrap">{idx + 1}</td>
+                            <td className="px-3 py-1.5 whitespace-nowrap">
+                              <div className="font-bold text-slate-800 text-sm leading-tight">{ev.projectName || ev.projectId}</div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5 leading-tight">{ev.projectId}</div>
+                            </td>
+                            <td className="px-3 py-1.5 whitespace-nowrap">
+                              <div className="font-medium text-slate-700 text-sm leading-tight">{ev.evaluatorName}</div>
+                              {ev.evaluatorEmail && <div className="text-[10px] text-slate-400 leading-tight">{ev.evaluatorEmail}</div>}
+                            </td>
+                            <td className="px-3 py-1.5 whitespace-nowrap">
+                              <div className={`inline-flex flex-col items-center px-2 py-0.5 rounded-lg border ${scoreBg}`}>
+                                <span className={`text-base font-extrabold leading-tight ${scoreColor}`}>{avgDisplay}</span>
+                                <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden my-0.5">
+                                  <div className={`${barColor} h-1 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className={`text-[9px] font-bold leading-tight ${scoreColor}`}>{pct}%</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q1 || 0)}</td>
+                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q2 || 0)}</td>
+                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q3 || 0)}</td>
+                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q4 || 0)}</td>
+                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q5 || 0)}</td>
+                            <td className="px-3 py-1.5 whitespace-nowrap text-slate-600 text-sm">
+                              {ev.submittedAt ? new Date(ev.submittedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                            </td>
+                            <td className="px-3 py-1.5">
+                              {ev.comment ? (
+                                <div className="max-w-[260px]">
+                                  <p className="text-xs text-slate-700 leading-tight line-clamp-2 whitespace-pre-wrap" title={ev.comment}>{ev.comment}</p>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-xs italic">ไม่มีความคิดเห็น</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* Table Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        {activeTab !== 'evaluation' && <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <h3 className="font-bold text-lg text-on-surface">{activeLabel}</h3>
@@ -1116,7 +1330,7 @@ const FormBackend = () => {
             </div>
             </>
           )}
-        </div>
+        </div>}
       </div>
 
       {previewImageUrl && createPortal(

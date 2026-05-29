@@ -39,24 +39,26 @@ function App() {
             <Route path="/pending" element={<PendingApprovalPage />} />
           </Route>
 
-          {/* Requires Login and Approved */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="asset" element={<Asset />} />
-              <Route path="equipment" element={<Equipment />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="projects/:id" element={<ProjectDetail />} />
-              <Route path="forms" element={<ITForms />} />
-              <Route path="forms/001" element={<RepairRequest />} />
-              <Route path="forms/002" element={<Appointment />} />
-              <Route path="forms/003" element={<AssetRequest />} />
-              <Route path="forms/004" element={<AssetReturn />} />
-              <Route path="forms/005" element={<LicenseRequest />} />
-              <Route path="forms/006" element={<UserRegistration />} />
-              <Route path="forms/007" element={<RemoteSupport />} />
+          {/* Layout wraps all main pages */}
+          <Route path="/" element={<Layout />}>
+            {/* Public (Anonymous read-only) Routes */}
+            <Route index element={<Dashboard />} />
+            <Route path="asset" element={<Asset />} />
+            <Route path="equipment" element={<Equipment />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="projects/:id" element={<ProjectDetail />} />
+            <Route path="forms" element={<ITForms />} />
+            <Route path="forms/001" element={<RepairRequest />} />
+            <Route path="forms/002" element={<Appointment />} />
+            <Route path="forms/003" element={<AssetRequest />} />
+            <Route path="forms/004" element={<AssetReturn />} />
+            <Route path="forms/005" element={<LicenseRequest />} />
+            <Route path="forms/006" element={<UserRegistration />} />
+            <Route path="forms/007" element={<RemoteSupport />} />
+            
+            {/* Protected Routes (Requires Login and Approved) */}
+            <Route element={<ProtectedRoute />}>
               <Route path="logs" element={<Logs />} />
-              
               <Route path="users" element={<Users />} />
               <Route path="form-backend" element={<FormBackend />} />
             </Route>
