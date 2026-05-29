@@ -13,6 +13,11 @@ interface FormRecord {
   [key: string]: unknown;
 }
 
+type PdfPreviewState = {
+  filename: string;
+  url: string;
+};
+
 const formTabs = [
   { id: '001', label: 'FM-IT-001', collection: 'repairRequests' },
   { id: '002', label: 'FM-IT-002', collection: 'appointments' },
@@ -346,40 +351,33 @@ function renderCellContent(colId: string, record: any, activeTab: string): strin
   }
 }
 
-async function handleExportPDF(record: FormRecord, formLabel: string) {
+async function handleExportPDF(record: FormRecord, formLabel: string): Promise<PdfPreviewState | void> {
   if (formLabel.includes('FM-IT-001')) {
-    await exportFM001Unified(record);
-    return;
+    return exportFM001Unified(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-002')) {
-    await exportFM002(record);
-    return;
+    return exportFM002(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-003')) {
-    await exportFM003(record);
-    return;
+    return exportFM003(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-004')) {
-    await exportFM004(record);
-    return;
+    return exportFM004(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-005')) {
-    await exportFM005(record);
-    return;
+    return exportFM005(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-006')) {
-    await exportFM006(record);
-    return;
+    return exportFM006(record, 'preview');
   }
 
   if (formLabel.includes('FM-IT-007')) {
-    await exportFM007(record);
-    return;
+    return exportFM007(record, 'preview');
   }
 
   const printWindow = window.open('', '_blank');
@@ -489,6 +487,7 @@ const FormBackend = () => {
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [previewPdf, setPreviewPdf] = useState<PdfPreviewState | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<FormRecord | null>(null);
   const [isEditingRecord, setIsEditingRecord] = useState(false);
   const [editFormData, setEditFormData] = useState<Record<string, any>>({});
@@ -516,6 +515,24 @@ const FormBackend = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [previewImageUrl]);
+
+  useEffect(() => {
+    if (!previewPdf) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewPdf((current) => {
+          if (current) {
+            URL.revokeObjectURL(current.url);
+          }
+          return null;
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewPdf]);
 
   const isMasterAdmin = currentUser && (
     Array.isArray(currentUser.role)
@@ -1041,7 +1058,23 @@ const FormBackend = () => {
                           } else if (col.id === 'pdf') {
                             isComponent = true;
                             cellContent = (
-                              <button type="button" onClick={(e) => { e.stopPropagation(); handleExportPDF(record, activeLabel); }} className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm" title="Download / View PDF">
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const pdf = await handleExportPDF(record, activeLabel);
+                                  if (pdf) {
+                                    setPreviewPdf((current) => {
+                                      if (current) {
+                                        URL.revokeObjectURL(current.url);
+                                      }
+                                      return pdf;
+                                    });
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                                title="Preview PDF"
+                              >
                                 <span className="material-symbols-outlined text-base">picture_as_pdf</span> Export
                               </button>
                             );
@@ -1149,6 +1182,69 @@ const FormBackend = () => {
                 <a
                   href={previewImageUrl}
                   download
+                  className="min-w-[140px] rounded-xl bg-[#27619D] px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#1f4f80]"
+                >
+                  Download
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {previewPdf && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99998 }}>
+          <div
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={() => setPreviewPdf((current) => {
+              if (current) {
+                URL.revokeObjectURL(current.url);
+              }
+              return null;
+            })}
+          />
+          <div className="relative w-full max-w-6xl">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/10 bg-black/60 px-5 py-4">
+                <h2 className="text-base font-bold text-white">{previewPdf.filename}</h2>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPdf((current) => {
+                    if (current) {
+                      URL.revokeObjectURL(current.url);
+                    }
+                    return null;
+                  })}
+                  className="rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                  aria-label="Close PDF preview"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+              <div className="bg-slate-200 p-2">
+                <iframe
+                  src={previewPdf.url}
+                  title={previewPdf.filename}
+                  className="h-[75vh] w-full rounded-2xl border-0 bg-white"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 bg-black/60 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setPreviewPdf((current) => {
+                    if (current) {
+                      URL.revokeObjectURL(current.url);
+                    }
+                    return null;
+                  })}
+                  className="min-w-[140px] rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/20"
+                >
+                  Cancel
+                </button>
+                <a
+                  href={previewPdf.url}
+                  download={previewPdf.filename}
                   className="min-w-[140px] rounded-xl bg-[#27619D] px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#1f4f80]"
                 >
                   Download
