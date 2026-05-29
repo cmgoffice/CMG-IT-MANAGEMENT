@@ -489,6 +489,10 @@ const FormBackend = () => {
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<FormRecord | null>(null);
+  const [isEditingRecord, setIsEditingRecord] = useState(false);
+  const [editFormData, setEditFormData] = useState<Record<string, any>>({});
+  const [isSavingRecord, setIsSavingRecord] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -786,6 +790,44 @@ const FormBackend = () => {
     }
   };
 
+  const handleEditClick = () => {
+    if (!selectedRecord) return;
+    const initialData: Record<string, any> = {
+      status: selectedRecord.status || 'pending'
+    };
+    tabColumnsConfig[activeTab]?.forEach(col => {
+      const val = renderCellContent(col.id, selectedRecord, activeTab);
+      initialData[col.id] = val === '-' ? '' : val;
+    });
+    setEditFormData(initialData);
+    setIsEditingRecord(true);
+  };
+
+  const handleSaveRecord = async () => {
+    if (!selectedRecord) return;
+    setIsSavingRecord(true);
+    const activeForm = formTabs.find((t) => t.id === activeTab);
+    if (!activeForm) {
+      setIsSavingRecord(false);
+      return;
+    }
+
+    try {
+      const docRef = doc(db, `${APP_NAME}/root/${activeForm.collection}`, selectedRecord.id);
+      // บันทึกการแก้ไขแบบ Merge เพื่อไม่ให้กระทบฟิลด์อื่นๆ ที่อาจจะซ่อนอยู่ (เช่น รูปภาพ)
+      await setDoc(docRef, editFormData, { merge: true });
+      
+      // อัปเดตข้อมูลที่แสดงบน Modal ทันที
+      setSelectedRecord({ ...selectedRecord, ...editFormData });
+      setIsEditingRecord(false);
+    } catch (error) {
+      console.error('Error updating record:', error);
+      alert('Failed to update record.');
+    } finally {
+      setIsSavingRecord(false);
+    }
+  };
+
   return (
     <div className="pt-8 pb-12 px-8 min-h-screen relative z-10">
       <div className="max-w-[95%] mx-auto">
@@ -966,7 +1008,7 @@ const FormBackend = () => {
                         : 'bg-amber-100 text-amber-700';
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setSelectedRecord(record)}>
                         <td className="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         {orderedColumns.map(col => {
                           if (hiddenColumns.has(col.id)) return null;
@@ -981,14 +1023,14 @@ const FormBackend = () => {
                             cellContent = attachments.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {attachments.map((url, i) => (
-                                  <button
-                                    type="button"
+                                  <div
                                     key={i}
-                                    onClick={() => setPreviewImageUrl(url)}
-                                    className="text-sm font-bold text-[#27619D] bg-[#C7E7FF]/40 px-3 py-1 rounded-lg hover:bg-[#C7E7FF] transition-colors whitespace-nowrap"
+                                    onClick={(e) => { e.stopPropagation(); setPreviewImageUrl(url); }}
+                                    className="relative w-12 h-12 rounded-lg overflow-hidden cursor-pointer border border-slate-200 hover:ring-2 hover:ring-[#27619D] hover:shadow-md transition-all group shrink-0 bg-slate-100"
+                                    title={`View Photo ${i + 1}`}
                                   >
-                                    Photo {i + 1}
-                                  </button>
+                                    <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                  </div>
                                 ))}
                               </div>
                             ) : <span className="text-slate-400 text-sm">-</span>;
@@ -998,14 +1040,14 @@ const FormBackend = () => {
                           } else if (col.id === 'pdf') {
                             isComponent = true;
                             cellContent = (
-                              <button type="button" onClick={() => handleExportPDF(record, activeLabel)} className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm" title="Download / View PDF">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleExportPDF(record, activeLabel); }} className="flex items-center gap-1 text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors shadow-sm" title="Download / View PDF">
                                 <span className="material-symbols-outlined text-base">picture_as_pdf</span> Export
                               </button>
                             );
                           } else if (col.id === 'delete') {
                             isComponent = true;
                             cellContent = (
-                              <button type="button" onClick={() => handleDeleteRecord(record.id)} className="flex items-center gap-1 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm" title="Delete Record">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteRecord(record.id); }} className="flex items-center gap-1 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm" title="Delete Record">
                                 <span className="material-symbols-outlined text-base">delete</span>
                               </button>
                             );
@@ -1289,6 +1331,137 @@ const FormBackend = () => {
                 Import {importPreview.length} Records
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {selectedRecord && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99990 }}>
+          <div className="absolute inset-0 bg-[#2c3437]/40 backdrop-blur-sm" onClick={() => { setSelectedRecord(null); setIsEditingRecord(false); }} />
+          <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl p-8 max-h-[90vh] overflow-y-auto animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight font-display">Record Details</h2>
+                <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-wider">{selectedRecord.id}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isEditingRecord && (
+                  <button onClick={handleEditClick} className="flex items-center gap-1 px-4 py-2 bg-slate-100 text-[#27619d] rounded-xl hover:bg-slate-200 transition-colors text-sm font-bold shadow-sm">
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    Edit
+                  </button>
+                )}
+                <button onClick={() => { setSelectedRecord(null); setIsEditingRecord(false); }} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+                  <span className="material-symbols-outlined text-slate-500">close</span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+              <div className="col-span-full sm:col-span-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Date Submitted</label>
+                <div className="text-sm font-medium text-slate-800">{formatDate(selectedRecord.createdAt)}</div>
+              </div>
+              <div className="col-span-full sm:col-span-1">
+                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Status</label>
+                 {isEditingRecord ? (
+                    <select 
+                      value={editFormData.status || 'pending'}
+                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none cursor-pointer"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                 ) : (
+                   <div className="text-sm font-bold capitalize text-slate-800">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${(selectedRecord.status as string) === 'approved' ? 'bg-green-100 text-green-700' : (selectedRecord.status as string) === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {(selectedRecord.status as string) || 'Pending'}
+                      </span>
+                   </div>
+                 )}
+              </div>
+      
+              {tabColumnsConfig[activeTab]?.map(col => {
+                const isLongText = ['detailedDescription', 'jobDetails', 'reason', 'cancelUsageReason', 'dataAccessDetails', 'requirements', 'detail'].includes(col.id);
+                return (
+                  <div key={col.id} className={`${isLongText ? 'col-span-full' : 'col-span-full sm:col-span-1'}`}>
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{col.label}</label>
+                    {isEditingRecord ? (
+                      isLongText ? (
+                        <textarea 
+                          value={editFormData[col.id] || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, [col.id]: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none resize-none"
+                        />
+                      ) : (
+                        <input 
+                          type="text"
+                          value={editFormData[col.id] || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, [col.id]: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none"
+                        />
+                      )
+                    ) : (
+                      <div className="text-sm font-medium text-slate-800 whitespace-pre-wrap">
+                        {renderCellContent(col.id, selectedRecord, activeTab) || '-'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {(() => {
+                const attachments = getAttachments(selectedRecord);
+                if (attachments.length === 0) return null;
+                return (
+                  <div className="col-span-full mt-2 border-t border-slate-100 pt-5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">photo_library</span>
+                      Attached Photos ({attachments.length})
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {attachments.map((url, i) => (
+                        <div
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); setPreviewImageUrl(url); }}
+                          className="relative w-24 h-24 rounded-xl overflow-hidden cursor-pointer border border-slate-200 hover:ring-2 hover:ring-[#27619D] hover:shadow-md transition-all group shrink-0 bg-slate-100"
+                          title={`View Photo ${i + 1}`}
+                        >
+                          <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity">zoom_in</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {isEditingRecord && (
+              <div className="mt-8 pt-5 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => setIsEditingRecord(false)}
+                  className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm"
+                  disabled={isSavingRecord}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRecord}
+                  disabled={isSavingRecord}
+                  className="px-5 py-2.5 rounded-xl font-bold bg-[#27619D] text-white hover:bg-[#1e4d7a] transition-colors shadow-lg shadow-[#27619D]/20 text-sm flex items-center gap-2"
+                >
+                  {isSavingRecord && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                  Save Changes
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body
