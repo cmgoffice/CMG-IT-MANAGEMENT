@@ -225,14 +225,20 @@ const Layout = () => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <div className="lg:hidden fixed bottom-0 left-0 w-full bg-[#F7F9FB]/60 backdrop-blur-xl border-t border-white/20 flex justify-around items-center h-[85px] z-50 px-2 overflow-x-auto gap-6">
-        {navLinks.map((link) => (
+      <div className="lg:hidden fixed bottom-0 left-0 w-full bg-[#F7F9FB]/60 backdrop-blur-xl border-t border-white/20 flex justify-start sm:justify-around items-center h-[85px] z-50 px-4 overflow-x-auto gap-6 scrollbar-hide">
+        {[
+          ...navLinks,
+          ...(isMasterAdmin ? [
+            { to: '/users', label: 'Users', icon: 'manage_accounts' },
+            { to: '/form-backend', label: 'Backend', icon: 'table_view' }
+          ] : [])
+        ].map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
             end={link.to === '/'}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-1.5 min-w-[67px] ${
+              `flex flex-col items-center gap-1.5 min-w-[64px] shrink-0 relative ${
                 isActive ? 'text-primary' : 'text-slate-500'
               }`
             }
@@ -243,6 +249,11 @@ const Layout = () => {
                   <span className="material-symbols-outlined text-[26px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
                     {link.icon}
                   </span>
+                  {link.to === '/users' && pendingCount > 0 && (
+                    <span className="absolute top-0 right-2 bg-error text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
                 </div>
                 <span className={`text-[12px] font-body ${isActive ? 'font-bold text-[#27619D]' : ''}`}>{link.label}</span>
               </>
@@ -250,10 +261,6 @@ const Layout = () => {
           </NavLink>
         ))}
       </div>
-
-      <button className="fixed bottom-[104px] right-10 w-[74px] h-[74px] bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 duration-150 z-40 lg:bottom-12 lg:hidden">
-        <span className="material-symbols-outlined text-[30px]">add</span>
-      </button>
 
       {/* Update Profile Modal */}
       {showUpdateProfile && (

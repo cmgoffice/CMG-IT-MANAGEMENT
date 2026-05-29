@@ -793,7 +793,8 @@ const FormBackend = () => {
   const handleEditClick = () => {
     if (!selectedRecord) return;
     const initialData: Record<string, any> = {
-      status: selectedRecord.status || 'pending'
+      status: selectedRecord.status || 'pending',
+      attachments: getAttachments(selectedRecord)
     };
     tabColumnsConfig[activeTab]?.forEach(col => {
       const val = renderCellContent(col.id, selectedRecord, activeTab);
@@ -1415,8 +1416,12 @@ const FormBackend = () => {
               })}
 
               {(() => {
-                const attachments = getAttachments(selectedRecord);
-                if (attachments.length === 0) return null;
+                const attachments = isEditingRecord 
+                  ? (editFormData.attachments || []) 
+                  : getAttachments(selectedRecord);
+                
+                if (attachments.length === 0 && !isEditingRecord) return null;
+                
                 return (
                   <div className="col-span-full mt-2 border-t border-slate-100 pt-5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -1424,19 +1429,68 @@ const FormBackend = () => {
                       Attached Photos ({attachments.length})
                     </label>
                     <div className="flex flex-wrap gap-3">
-                      {attachments.map((url, i) => (
+                      {attachments.map((url: string, i: number) => (
                         <div
                           key={i}
-                          onClick={(e) => { e.stopPropagation(); setPreviewImageUrl(url); }}
-                          className="relative w-24 h-24 rounded-xl overflow-hidden cursor-pointer border border-slate-200 hover:ring-2 hover:ring-[#27619D] hover:shadow-md transition-all group shrink-0 bg-slate-100"
-                          title={`View Photo ${i + 1}`}
+                          onClick={(e) => { 
+                            if (!isEditingRecord) {
+                              e.stopPropagation(); 
+                              setPreviewImageUrl(url); 
+                            }
+                          }}
+                          className={`relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 ${!isEditingRecord ? 'cursor-pointer hover:ring-2 hover:ring-[#27619D] hover:shadow-md transition-all group' : ''}`}
+                          title={!isEditingRecord ? `View Photo ${i + 1}` : ''}
                         >
-                          <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity">zoom_in</span>
-                          </div>
+                          <img src={url} alt={`Attachment ${i + 1}`} className={`w-full h-full object-cover ${!isEditingRecord ? 'group-hover:scale-110 transition-transform duration-300' : ''}`} />
+                          {!isEditingRecord && (
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity">zoom_in</span>
+                            </div>
+                          )}
+                          {isEditingRecord && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditFormData((prev) => ({
+                                  ...prev,
+                                  attachments: (prev.attachments || []).filter((_: string, index: number) => index !== i)
+                                }));
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center transition-all shadow-md z-10"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">close</span>
+                            </button>
+                          )}
                         </div>
                       ))}
+                      
+                      {isEditingRecord && (
+                        <label className="relative w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-[#27619D] transition-colors text-slate-400 hover:text-[#27619D]">
+                          <span className="material-symbols-outlined">add_photo_alternate</span>
+                          <span className="text-[10px] font-bold mt-1">Add Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              const files = e.target.files;
+                              if (!files) return;
+                              Array.from(files).forEach((file) => {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const base64 = event.target?.result as string;
+                                  setEditFormData((prev) => ({
+                                    ...prev,
+                                    attachments: [...(prev.attachments || []), base64]
+                                  }));
+                                };
+                                reader.readAsDataURL(file);
+                              });
+                            }}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
                 );
