@@ -49,6 +49,13 @@ type PdfRect = {
   height: number;
 };
 
+type PdfAction = 'download' | 'preview';
+
+export type PdfPreviewResult = {
+  filename: string;
+  url: string;
+};
+
 const DEFAULT_IMAGE_RECT: PdfRect = { x: 50, y: 50, width: 300, height: 200 };
 
 function sanitizeText(text: unknown): string {
@@ -247,6 +254,17 @@ function downloadPdf(pdfBytes: ArrayBuffer | Uint8Array, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function finalizePdf(pdfBytes: Uint8Array, filename: string, action: PdfAction): PdfPreviewResult | void {
+  if (action === 'download') {
+    downloadPdf(pdfBytes, filename);
+    return;
+  }
+
+  const blob = new Blob([pdfBytes.slice().buffer], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  return { filename, url };
+}
+
 export async function exportFM001(record: FormRecord) {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM001-lib.pdf');
@@ -313,7 +331,7 @@ export async function exportFM001(record: FormRecord) {
   }
 }
 
-export async function exportFM002(record: FormRecord) {
+export async function exportFM002(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM002-lib.pdf');
 
@@ -367,14 +385,14 @@ export async function exportFM002(record: FormRecord) {
     await embedAttachments(pdfDoc, record.attachments, pictureRect);
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-002'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-002'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
   }
 }
 
-export async function exportFM003(record: FormRecord) {
+export async function exportFM003(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM003-lib.pdf');
 
@@ -448,14 +466,14 @@ export async function exportFM003(record: FormRecord) {
     form.flatten();
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-003'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-003'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
   }
 }
 
-export async function exportFM004(record: FormRecord) {
+export async function exportFM004(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM004-lib.pdf');
 
@@ -528,14 +546,14 @@ export async function exportFM004(record: FormRecord) {
     form.flatten();
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-004'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-004'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
   }
 }
 
-export async function exportFM005(record: FormRecord) {
+export async function exportFM005(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM005-lib.pdf');
 
@@ -597,14 +615,14 @@ export async function exportFM005(record: FormRecord) {
     form.flatten();
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-005'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-005'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
   }
 }
 
-export async function exportFM006(record: FormRecord) {
+export async function exportFM006(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM006-lib.pdf');
 
@@ -667,14 +685,14 @@ export async function exportFM006(record: FormRecord) {
     form.flatten();
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-006'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-006'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
   }
 }
 
-export async function exportFM007(record: FormRecord) {
+export async function exportFM007(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM007-lib.pdf');
 
@@ -734,7 +752,7 @@ export async function exportFM007(record: FormRecord) {
     form.flatten();
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-007'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-007'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
@@ -808,7 +826,7 @@ export async function exportFM001Thai(record: FormRecord) {
   }
 }
 
-export async function exportFM001Unified(record: FormRecord) {
+export async function exportFM001Unified(record: FormRecord, action: PdfAction = 'download') {
   try {
     const { pdfDoc, form, customFont } = await loadPdfResources('/FM001-lib.pdf');
 
@@ -917,7 +935,7 @@ export async function exportFM001Unified(record: FormRecord) {
     await embedAttachments(pdfDoc, record.attachments, pictureRect);
 
     const pdfBytesModified = await pdfDoc.save();
-    downloadPdf(pdfBytesModified, `${docNo || 'FM-IT-001'}.pdf`);
+    return finalizePdf(pdfBytesModified, `${docNo || 'FM-IT-001'}.pdf`, action);
   } catch (error: any) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Error: ' + (error?.message || error));
