@@ -1,4 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { ISOAuditReport } from '../components/ISOAuditReport';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
@@ -33,6 +36,37 @@ type ProjectKPI = {
   scorePercent: number; // 0-100
   evalCount: number;
   progress: number;
+};
+
+type HistoryEntry = {
+  assetId: string;
+  equipment: string;
+  user: string;
+  status: string;
+  date: string;
+  action: string;
+  detail: string;
+};
+
+const assetStatusColor: Record<string, string> = {
+  'Active': 'bg-secondary-container text-on-secondary-container',
+  'Repair': 'bg-error-container text-error',
+  'Retired': 'bg-surface-container-highest text-outline',
+};
+
+const timeAgo = (dateStr: string) => {
+  const date = new Date(dateStr.replace(' ', 'T'));
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hours ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) return 'Yesterday';
+  return `${diffInDays} days ago`;
 };
 
 const statusColor: Record<string, { bg: string; text: string; dot: string }> = {
@@ -97,6 +131,37 @@ const Dashboard = () => {
   const [pendingRepairs, setPendingRepairs] = useState(0);
   const [activeUsers, setActiveUsers] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [recentHistory, setRecentHistory] = useState<HistoryEntry[]>([]);
+
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportToPDF = async () => {
+    if (!reportRef.current) {
+      alert('Report reference not found!');
+      return;
+    }
+    try {
+      setIsExporting(true);
+      const canvas = await html2canvas(reportRef.current, { 
+        scale: 2,
+        useCORS: true,
+        logging: true
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`ISO_Audit_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF: ' + error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   useEffect(() => {
     loadKpiData();
@@ -114,12 +179,29 @@ const Dashboard = () => {
       setTotalAssets(assetsSnap.size);
       
       let repairs = 0;
+      let allHistory: HistoryEntry[] = [];
       assetsSnap.forEach(doc => {
-        if (doc.data().status === 'Repair') {
+        const data = doc.data();
+        if (data.status === 'Repair') {
           repairs++;
+        }
+        if (data.history && Array.isArray(data.history)) {
+          data.history.forEach((h: any) => {
+            allHistory.push({
+              assetId: doc.id,
+              equipment: data.name || 'Unknown',
+              user: data.user || 'Unassigned',
+              status: data.status || 'Unknown',
+              date: h.date,
+              action: h.action,
+              detail: h.detail,
+            });
+          });
         }
       });
       setPendingRepairs(repairs);
+      allHistory.sort((a, b) => b.date.localeCompare(a.date));
+      setRecentHistory(allHistory.slice(0, 5));
       
       setActiveUsers(usersSnap.size);
     } catch (err) {
@@ -285,6 +367,18 @@ const Dashboard = () => {
               </button>
             </div>
             <button
+              onClick={exportToPDF}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all disabled:opacity-70"
+            >
+              {isExporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <span className="material-symbols-outlined text-[18px]">download</span>
+              )}
+              {isExporting ? 'Generating...' : 'Export ISO Report'}
+            </button>
+            <button
               onClick={() => navigate('/projects')}
               className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-2xl text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all"
             >
@@ -416,7 +510,7 @@ const Dashboard = () => {
                           </div>
 
                           {/* Name + status dot */}
-                          <div className="min-w-0 w-36 shrink-0">
+                          <div className="flex-[2] min-w-0">
                             <p className="text-[12px] font-bold text-on-surface truncate group-hover:text-primary transition-colors leading-tight">
                               {kpi.name}
                             </p>
@@ -427,7 +521,7 @@ const Dashboard = () => {
                           </div>
 
                           {/* Bar */}
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-[1] min-w-0">
                             {kpi.evalCount > 0 ? (
                               <AnimatedBar percent={kpi.scorePercent} gradient={gradient} />
                             ) : (
@@ -495,33 +589,28 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/20">
-                    <tr className="hover:bg-white/40 transition-colors">
-                      <td className="px-6 py-5 font-display font-bold text-primary">LAP-2024-089</td>
-                      <td className="px-6 py-5 text-sm">MacBook Pro 16" M3</td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant">Elena Rodriguez</td>
-                      <td className="px-6 py-5">
-                        <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-tight">Active</span>
-                      </td>
-                      <td className="px-6 py-5 text-xs text-right text-outline">2 hours ago</td>
-                    </tr>
-                    <tr className="hover:bg-white/40 transition-colors">
-                      <td className="px-6 py-5 font-display font-bold text-primary">MON-2024-112</td>
-                      <td className="px-6 py-5 text-sm">Dell UltraSharp 27"</td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant">Marcus Thorne</td>
-                      <td className="px-6 py-5">
-                        <span className="px-3 py-1 bg-surface-container-highest text-outline rounded-full text-[10px] font-bold uppercase tracking-tight">Inventory</span>
-                      </td>
-                      <td className="px-6 py-5 text-xs text-right text-outline">5 hours ago</td>
-                    </tr>
-                    <tr className="hover:bg-white/40 transition-colors">
-                      <td className="px-6 py-5 font-display font-bold text-primary">PER-2024-005</td>
-                      <td className="px-6 py-5 text-sm">iPad Pro 12.9"</td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant">Sarah Chen</td>
-                      <td className="px-6 py-5">
-                        <span className="px-3 py-1 bg-error-container text-error rounded-full text-[10px] font-bold uppercase tracking-tight">In Repair</span>
-                      </td>
-                      <td className="px-6 py-5 text-xs text-right text-outline">Yesterday</td>
-                    </tr>
+                    {recentHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-on-surface-variant font-body">
+                          {statsLoading ? 'Loading history...' : 'No recent history found.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      recentHistory.map((entry, idx) => (
+                        <tr key={idx} className="hover:bg-white/40 transition-colors">
+                          <td className="px-6 py-5 font-display font-bold text-primary">{entry.assetId}</td>
+                          <td className="px-6 py-5 text-sm">
+                            <div className="font-semibold text-on-surface">{entry.equipment}</div>
+                            <div className="text-xs text-on-surface-variant mt-0.5">{entry.action}</div>
+                          </td>
+                          <td className="px-6 py-5 text-sm text-on-surface-variant">{entry.user}</td>
+                          <td className="px-6 py-5">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight ${assetStatusColor[entry.status] || 'bg-surface-container-highest text-outline'}`}>{entry.status}</span>
+                          </td>
+                          <td className="px-6 py-5 text-xs text-right text-outline">{timeAgo(entry.date)}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -574,6 +663,15 @@ const Dashboard = () => {
           </div>
         </div>
       </section>
+      {/* Hidden PDF Report Container */}
+      <div style={{ position: 'absolute', top: 0, left: 0, zIndex: -50, opacity: 0.001, pointerEvents: 'none' }}>
+        <ISOAuditReport 
+          ref={reportRef} 
+          kpiData={kpiData} 
+          overallAvg={overallAvg} 
+          userProfile={userProfile} 
+        />
+      </div>
     </div>
   );
 };
