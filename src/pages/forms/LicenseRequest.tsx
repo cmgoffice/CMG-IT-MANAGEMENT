@@ -158,6 +158,10 @@ const LicenseRequest = () => {
                         <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">License Microsoft Office 365+</span>
                       </label>
                       <label className="flex items-center gap-3 cursor-pointer group">
+                        <input name="sw_windows" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
+                        <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">License Windows</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer group">
                         <input name="sw_sketchup" value="true" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
                         <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">License Sketchup 3D</span>
                       </label>
