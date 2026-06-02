@@ -1210,18 +1210,18 @@ const FormBackend = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Action</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">#</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Project</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Evaluator</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Score (Avg)</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q1</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q2</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q3</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q4</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">Q5</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">วันที่ประเมิน</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Action</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">#</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Project</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Evaluator</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Score (Avg)</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Q1</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Q2</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Q3</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Q4</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">Q5</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">วันที่ประเมิน</th>
+                        <th className="px-2 py-1 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1242,7 +1242,7 @@ const FormBackend = () => {
                         );
                         return (
                           <tr key={ev.id} className="hover:bg-amber-50/30 transition-colors">
-                            <td className="px-3 py-1.5 whitespace-nowrap">
+                            <td className="px-2 py-1 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <button onClick={() => handleEditEvalClick(ev)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
                                   <span className="material-symbols-outlined text-sm">edit</span>
@@ -1252,16 +1252,16 @@ const FormBackend = () => {
                                 </button>
                               </div>
                             </td>
-                            <td className="px-3 py-1.5 text-slate-500 font-medium whitespace-nowrap">{idx + 1}</td>
-                            <td className="px-3 py-1.5 whitespace-nowrap">
+                            <td className="px-2 py-1 text-slate-500 font-medium whitespace-nowrap">{idx + 1}</td>
+                            <td className="px-2 py-1 whitespace-nowrap">
                               <div className="font-bold text-slate-800 text-sm leading-tight">{ev.projectName || ev.projectId}</div>
                               <div className="text-[10px] text-slate-400 font-mono mt-0.5 leading-tight">{ev.projectId}</div>
                             </td>
-                            <td className="px-3 py-1.5 whitespace-nowrap">
+                            <td className="px-2 py-1 whitespace-nowrap">
                               <div className="font-medium text-slate-700 text-sm leading-tight">{ev.evaluatorName}</div>
                               {ev.evaluatorEmail && <div className="text-[10px] text-slate-400 leading-tight">{ev.evaluatorEmail}</div>}
                             </td>
-                            <td className="px-3 py-1.5 whitespace-nowrap">
+                            <td className="px-2 py-1 whitespace-nowrap">
                               <div className={`inline-flex flex-col items-center px-2 py-0.5 rounded-lg border ${scoreBg}`}>
                                 <span className={`text-base font-extrabold leading-tight ${scoreColor}`}>{avgDisplay}</span>
                                 <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden my-0.5">
@@ -1270,15 +1270,15 @@ const FormBackend = () => {
                                 <span className={`text-[9px] font-bold leading-tight ${scoreColor}`}>{pct}%</span>
                               </div>
                             </td>
-                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q1 || 0)}</td>
-                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q2 || 0)}</td>
-                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q3 || 0)}</td>
-                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q4 || 0)}</td>
-                            <td className="px-3 py-1.5">{renderStarScore(ev.ratings?.q5 || 0)}</td>
-                            <td className="px-3 py-1.5 whitespace-nowrap text-slate-600 text-sm">
+                            <td className="px-2 py-1">{renderStarScore(ev.ratings?.q1 || 0)}</td>
+                            <td className="px-2 py-1">{renderStarScore(ev.ratings?.q2 || 0)}</td>
+                            <td className="px-2 py-1">{renderStarScore(ev.ratings?.q3 || 0)}</td>
+                            <td className="px-2 py-1">{renderStarScore(ev.ratings?.q4 || 0)}</td>
+                            <td className="px-2 py-1">{renderStarScore(ev.ratings?.q5 || 0)}</td>
+                            <td className="px-2 py-1 whitespace-nowrap text-slate-600 text-sm">
                               {ev.submittedAt ? new Date(ev.submittedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                             </td>
-                            <td className="px-3 py-1.5">
+                            <td className="px-2 py-1">
                               {ev.comment ? (
                                 <div className="max-w-[260px]">
                                   <p className="text-xs text-slate-700 leading-tight line-clamp-2 whitespace-pre-wrap" title={ev.comment}>{ev.comment}</p>
@@ -1402,9 +1402,9 @@ const FormBackend = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider border-b border-slate-200">
-                    <th className="px-6 py-4 font-bold whitespace-nowrap">#</th>
+                    <th className="px-3 py-1 font-bold whitespace-nowrap">#</th>
                     {orderedColumns.map(col => (
-                      !hiddenColumns.has(col.id) && <th key={col.id} className="px-6 py-4 font-bold whitespace-nowrap">{col.label}</th>
+                      !hiddenColumns.has(col.id) && <th key={col.id} className="px-3 py-1 font-bold whitespace-nowrap">{col.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1422,7 +1422,7 @@ const FormBackend = () => {
 
                     return (
                       <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setSelectedRecord(record)}>
-                        <td className="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
+                        <td className="px-3 py-1 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         {orderedColumns.map(col => {
                           if (hiddenColumns.has(col.id)) return null;
 
@@ -1488,7 +1488,7 @@ const FormBackend = () => {
                           const isReporter = col.id === 'reporter';
 
                           return (
-                            <td key={col.id} className={`px-6 py-4 ${isComponent ? '' : 'text-slate-700'}`}>
+                            <td key={col.id} className={`px-3 py-1 ${isComponent ? '' : 'text-slate-700'}`}>
                               {isComponent ? cellContent : (
                                 <div className={`${isTruncate ? 'max-w-[200px] truncate' : 'whitespace-nowrap'} ${isReporter ? 'font-medium' : ''}`} title={isTruncate ? String(cellContent) : undefined}>
                                   {cellContent as React.ReactNode}
@@ -1504,7 +1504,7 @@ const FormBackend = () => {
               </table>
             </div>
             {/* Pagination Controls */}
-            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+            <div className="px-3 py-1 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
               <div className="text-sm text-slate-500 font-medium">
                 Showing {filteredRecords.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredRecords.length)} of {filteredRecords.length} records
               </div>
