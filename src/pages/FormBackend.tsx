@@ -507,6 +507,7 @@ const FormBackend = () => {
   const [evaluationRecords, setEvaluationRecords] = useState<EvaluationRecord[]>([]);
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalSearchQuery, setEvalSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -595,6 +596,7 @@ const FormBackend = () => {
     setStatusFilter('pending'); // Reset filter when changing tabs
     setCurrentPage(1); // Reset page when changing tabs
     setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
+    setSortConfig(null); // Reset sort
 
     // Set default column order
     setOrderedColumns([
@@ -639,6 +641,26 @@ const FormBackend = () => {
     if (statusFilter === 'All') return true;
     const currentStatus = (record.status as string)?.toLowerCase() || 'pending';
     return currentStatus === statusFilter.toLowerCase();
+  }).sort((a, b) => {
+    if (!sortConfig) return 0;
+    const { key, direction } = sortConfig;
+    let aValue: any;
+    let bValue: any;
+
+    if (key === 'dateSubmitted') {
+      aValue = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt as string).getTime() : 0);
+      bValue = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt as string).getTime() : 0);
+    } else if (key === 'status') {
+      aValue = String(a.status || 'pending').toLowerCase();
+      bValue = String(b.status || 'pending').toLowerCase();
+    } else {
+      aValue = String(renderCellContent(key, a, activeTab)).toLowerCase();
+      bValue = String(renderCellContent(key, b, activeTab)).toLowerCase();
+    }
+
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
@@ -893,6 +915,15 @@ const FormBackend = () => {
     } finally {
       setIsSavingRecord(false);
     }
+  };
+
+  const handleSort = (key: string) => {
+    if (['photos', 'pdf', 'delete'].includes(key)) return;
+    let direction: 'asc' | 'desc' = 'desc'; // Default to descending (newest first)
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
   };
 
   return (
@@ -1217,9 +1248,26 @@ const FormBackend = () => {
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider border-b border-slate-200">
                     <th className="px-6 py-4 font-bold whitespace-nowrap">#</th>
-                    {orderedColumns.map(col => (
-                      !hiddenColumns.has(col.id) && <th key={col.id} className="px-6 py-4 font-bold whitespace-nowrap">{col.label}</th>
-                    ))}
+                    {orderedColumns.map(col => {
+                      if (hiddenColumns.has(col.id)) return null;
+                      const isSortable = !['photos', 'pdf', 'delete'].includes(col.id);
+                      return (
+                        <th 
+                          key={col.id} 
+                          className={`px-6 py-4 font-bold whitespace-nowrap select-none group ${isSortable ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}`}
+                          onClick={() => isSortable && handleSort(col.id)}
+                        >
+                          <div className="flex items-center gap-1">
+                            {col.label}
+                            {isSortable && (
+                              <span className={`material-symbols-outlined text-[14px] ${sortConfig?.key === col.id ? 'text-[#27619D]' : 'text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
+                                {sortConfig?.key === col.id && sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
