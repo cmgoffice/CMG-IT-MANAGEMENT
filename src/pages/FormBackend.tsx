@@ -512,6 +512,7 @@ const FormBackend = () => {
   const [evaluationRecords, setEvaluationRecords] = useState<EvaluationRecord[]>([]);
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalSearchQuery, setEvalSearchQuery] = useState('');
+  const [evalProjectFilter, setEvalProjectFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [projectsList, setProjectsList] = useState<{id: string, name: string}[]>([]);
   const [selectedEvalRecord, setSelectedEvalRecord] = useState<EvaluationRecord | null>(null);
@@ -669,6 +670,28 @@ const FormBackend = () => {
     } else {
       aValue = String(renderCellContent(key, a, activeTab)).toLowerCase();
       bValue = String(renderCellContent(key, b, activeTab)).toLowerCase();
+      const valA = String(renderCellContent(key, a, activeTab));
+      const valB = String(renderCellContent(key, b, activeTab));
+
+      if (key.toLowerCase().includes('date')) {
+        const parseSortDate = (dStr: string) => {
+          if (!dStr || dStr === '-') return 0;
+          const match = dStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (match) {
+            const dt = new Date(`${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`);
+            if (!isNaN(dt.getTime())) return dt.getTime();
+          }
+          const dt = new Date(dStr);
+          return isNaN(dt.getTime()) ? dStr.toLowerCase() : dt.getTime();
+        };
+        aValue = parseSortDate(valA);
+        bValue = parseSortDate(valB);
+        if (typeof aValue === 'string' && typeof bValue === 'number') aValue = 0;
+        if (typeof aValue === 'number' && typeof bValue === 'string') bValue = 0;
+      } else {
+        aValue = valA.toLowerCase();
+        bValue = valB.toLowerCase();
+      }
     }
 
     if (aValue < bValue) return direction === 'asc' ? -1 : 1;
@@ -699,6 +722,8 @@ const FormBackend = () => {
   const getAvailableFields = (tabId: string) => {
     if (tabId === 'evaluation') {
       return [
+        { id: 'id', label: 'Evaluation ID' },
+        { id: 'projectId', label: 'Project ID' },
         { id: 'projectName', label: 'Project Name' },
         { id: 'evaluatorName', label: 'Evaluator Name' },
         { id: 'evaluatorEmail', label: 'Evaluator Email' },
@@ -729,12 +754,26 @@ const FormBackend = () => {
     const rows = [headers];
 
     if (activeTab === 'evaluation') {
-      evaluationRecords.forEach(record => {
-        const row = fields.map(field => {
-          let value = '';
-          if (field.id === 'projectName') value = record.projectName || '';
-          else if (field.id === 'evaluatorName') value = record.evaluatorName || '';
-          else if (field.id === 'evaluatorEmail') value = record.evaluatorEmail || '';
+      if (evaluationRecords.length === 0) {
+        const sampleRow = fields.map(f => {
+          if (f.id === 'id') return '""'; // Leave blank for new
+          if (f.id === 'projectId') return '"PRJ-' + Date.now().toString().slice(-4) + '"';
+          if (f.id === 'projectName') return '"Sample Project"';
+          if (f.id === 'evaluatorName') return '"John Doe"';
+          if (f.id.startsWith('q')) return '"5"';
+          if (f.id === 'submittedAt') return `"${new Date().toLocaleDateString('en-CA')}"`;
+          return '""';
+        });
+        rows.push(sampleRow.join(','));
+      } else {
+        evaluationRecords.forEach(record => {
+          const row = fields.map(field => {
+            let value = '';
+            if (field.id === 'id') value = record.id;
+            else if (field.id === 'projectId') value = record.projectId || '';
+            else if (field.id === 'projectName') value = record.projectName || '';
+            else if (field.id === 'evaluatorName') value = record.evaluatorName || '';
+            else if (field.id === 'evaluatorEmail') value = record.evaluatorEmail || '';
           else if (field.id === 'q1') value = record.ratings?.q1?.toString() || '';
           else if (field.id === 'q2') value = record.ratings?.q2?.toString() || '';
           else if (field.id === 'q3') value = record.ratings?.q3?.toString() || '';
@@ -746,21 +785,31 @@ const FormBackend = () => {
           return `"${String(value).replace(/"/g, '""')}"`;
         });
         rows.push(row.join(','));
-      });
-    } else {
-      records.forEach(record => {
-        const row = fields.map(field => {
-          let value: any = '';
-          if (field.id === 'id') value = record.id;
-          else if (field.id === 'status') value = record.status || 'pending';
-          else {
-            const cellVal = renderCellContent(field.id, record, activeTab);
-            value = cellVal !== '-' ? cellVal : '';
-          }
-          return `"${String(value).replace(/"/g, '""')}"`;
         });
-        rows.push(row.join(','));
-      });
+      }
+    } else {
+      if (records.length === 0) {
+        const sampleRow = fields.map(f => {
+          if (f.id === 'id') return '""';
+          if (f.id === 'status') return '"pending"';
+          return '"Sample Data"';
+        });
+        rows.push(sampleRow.join(','));
+      } else {
+        records.forEach(record => {
+          const row = fields.map(field => {
+            let value: any = '';
+            if (field.id === 'id') value = record.id;
+            else if (field.id === 'status') value = record.status || 'pending';
+            else {
+              const cellVal = renderCellContent(field.id, record, activeTab);
+              value = cellVal !== '-' ? cellVal : '';
+            }
+            return `"${String(value).replace(/"/g, '""')}"`;
+          });
+          rows.push(row.join(','));
+        });
+      }
     }
 
     const csvContent = rows.join('\n');
@@ -992,7 +1041,18 @@ const FormBackend = () => {
     if (!selectedRecord) return;
     const initialData: Record<string, any> = {
       status: selectedRecord.status || 'pending',
-      attachments: getAttachments(selectedRecord)
+      attachments: getAttachments(selectedRecord),
+      createdAt: selectedRecord.createdAt 
+        ? (() => {
+            try {
+              const date = selectedRecord.createdAt instanceof Timestamp 
+                ? selectedRecord.createdAt.toDate() 
+                : new Date(selectedRecord.createdAt as string);
+              const pad = (n: number) => n.toString().padStart(2, '0');
+              return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            } catch { return ''; }
+          })()
+        : ''
     };
     tabColumnsConfig[activeTab]?.forEach(col => {
       const val = renderCellContent(col.id, selectedRecord, activeTab);
@@ -1013,11 +1073,55 @@ const FormBackend = () => {
 
     try {
       const docRef = doc(db, `${APP_NAME}/root/${activeForm.collection}`, selectedRecord.id);
+      const payload = { ...editFormData };
+      
+      if (payload.createdAt) {
+        payload.createdAt = Timestamp.fromDate(new Date(payload.createdAt));
+      } else {
+        delete payload.createdAt;
+      }
+
+      // Re-map flat data back to nested objects specifically for FM-IT-001
+      if (activeTab === '001') {
+        if (selectedRecord.reporter && typeof selectedRecord.reporter === 'object') {
+          payload.reporter = {
+            ...selectedRecord.reporter,
+            name: payload.reporterName !== undefined ? payload.reporterName : selectedRecord.reporter.name,
+            department: payload.department !== undefined ? payload.department : selectedRecord.reporter.department,
+            jobTitle: payload.jobTitle !== undefined ? payload.jobTitle : selectedRecord.reporter.jobTitle,
+            phone: payload.phone !== undefined ? payload.phone : selectedRecord.reporter.phone,
+            email: payload.email !== undefined ? payload.email : selectedRecord.reporter.email,
+          };
+        }
+        if (selectedRecord.asset && typeof selectedRecord.asset === 'object') {
+          payload.asset = {
+            ...selectedRecord.asset,
+            assetId: payload.assetId !== undefined ? payload.assetId : selectedRecord.asset.assetId,
+            brand: payload.brand !== undefined ? payload.brand : selectedRecord.asset.brand,
+            model: payload.model !== undefined ? payload.model : selectedRecord.asset.model,
+            serialNumber: payload.sn !== undefined ? payload.sn : selectedRecord.asset.serialNumber,
+            purchaseDate: payload.purchaseDate !== undefined ? payload.purchaseDate : selectedRecord.asset.purchaseDate,
+            caretaker: payload.caretaker !== undefined ? payload.caretaker : selectedRecord.asset.caretaker,
+            receiveDate: payload.receiveDate !== undefined ? payload.receiveDate : selectedRecord.asset.receiveDate,
+            repairCount: payload.repairCount !== undefined ? payload.repairCount : selectedRecord.asset.repairCount,
+          };
+          if (payload.sn !== undefined) {
+            payload.serialNumber = payload.sn;
+          }
+        }
+        if (selectedRecord.issueDescription && typeof selectedRecord.issueDescription === 'object') {
+          payload.issueDescription = {
+            ...selectedRecord.issueDescription,
+            detailedDescription: payload.detailedDescription !== undefined ? payload.detailedDescription : selectedRecord.issueDescription.detailedDescription,
+          };
+        }
+      }
+
       // บันทึกการแก้ไขแบบ Merge เพื่อไม่ให้กระทบฟิลด์อื่นๆ ที่อาจจะซ่อนอยู่ (เช่น รูปภาพ)
-      await setDoc(docRef, editFormData, { merge: true });
+      await setDoc(docRef, payload, { merge: true });
       
       // อัปเดตข้อมูลที่แสดงบน Modal ทันที
-      setSelectedRecord({ ...selectedRecord, ...editFormData });
+      setSelectedRecord({ ...selectedRecord, ...payload });
       setIsEditingRecord(false);
     } catch (error) {
       console.error('Error updating record:', error);
@@ -1057,7 +1161,15 @@ const FormBackend = () => {
       q3: record.ratings?.q3 || 0,
       q4: record.ratings?.q4 || 0,
       q5: record.ratings?.q5 || 0,
-      comment: record.comment || ''
+      comment: record.comment || '',
+      submittedAt: record.submittedAt 
+        ? (() => {
+            try {
+              // แปลงเป็น YYYY-MM-DD สำหรับ input type="date"
+              return new Date(record.submittedAt).toLocaleDateString('en-CA');
+            } catch { return ''; }
+          })() 
+        : ''
     });
     setIsEditingEvalRecord(true);
   };
@@ -1076,7 +1188,10 @@ const FormBackend = () => {
           q4: Number(editEvalFormData.q4),
           q5: Number(editEvalFormData.q5),
         },
-        comment: editEvalFormData.comment || ''
+        comment: editEvalFormData.comment || '',
+        submittedAt: editEvalFormData.submittedAt 
+          ? new Date(editEvalFormData.submittedAt).toISOString() 
+          : selectedEvalRecord.submittedAt
       };
       await setDoc(docRef, updatedData, { merge: true });
       
@@ -1167,10 +1282,23 @@ const FormBackend = () => {
                 <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                 <h3 className="font-bold text-lg text-on-surface">Project Evaluation</h3>
                 <span className="text-sm text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                  {evaluationRecords.filter(e => !evalSearchQuery || e.projectName?.toLowerCase().includes(evalSearchQuery.toLowerCase()) || e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())).length} record(s)
+                  {evaluationRecords.filter(e => 
+                    (!evalSearchQuery || e.projectName?.toLowerCase().includes(evalSearchQuery.toLowerCase()) || e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())) &&
+                    (evalProjectFilter === 'All' || e.projectId === evalProjectFilter)
+                  ).length} record(s)
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                <select
+                  value={evalProjectFilter}
+                  onChange={(e) => setEvalProjectFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm max-w-[200px] truncate cursor-pointer"
+                >
+                  <option value="All">All Projects</option>
+                  {projectsList.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
                   <input
@@ -1224,9 +1352,10 @@ const FormBackend = () => {
               </div>
             ) : (() => {
               const filtered = evaluationRecords.filter(e =>
-                !evalSearchQuery ||
+                (!evalSearchQuery ||
                 e.projectName?.toLowerCase().includes(evalSearchQuery.toLowerCase()) ||
-                e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())
+                e.evaluatorName?.toLowerCase().includes(evalSearchQuery.toLowerCase())) &&
+                (evalProjectFilter === 'All' || e.projectId === evalProjectFilter)
               );
               if (filtered.length === 0) {
                 return (
@@ -1728,6 +1857,9 @@ const FormBackend = () => {
                       <li>First row must contain headers. You can map them to the database fields below.</li>
                       <li>Data will be imported into the selected form (<strong className="font-bold">{formTabs.find(t => t.id === importTargetTab)?.label}</strong>).</li>
                       <li>If <code className="bg-blue-100 px-1 rounded">id</code> column is omitted, a unique ID will be auto-generated.</li>
+                  {importTargetTab === 'evaluation' && (
+                    <li><code className="bg-blue-100 px-1 rounded text-[#27619d]">Project ID</code> is <strong className="font-bold">required</strong> for evaluations to link correctly to a project.</li>
+                  )}
                     </ul>
                   </div>
                 </div>
@@ -1901,7 +2033,16 @@ const FormBackend = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
               <div className="col-span-full sm:col-span-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Date Submitted</label>
-                <div className="text-sm font-medium text-slate-800">{formatDate(selectedRecord.createdAt)}</div>
+                {isEditingRecord ? (
+                  <input
+                    type="datetime-local"
+                    value={editFormData.createdAt || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, createdAt: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none cursor-pointer"
+                  />
+                ) : (
+                  <div className="text-sm font-medium text-slate-800">{formatDate(selectedRecord.createdAt)}</div>
+                )}
               </div>
               <div className="col-span-full sm:col-span-1">
                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Status</label>
@@ -2094,6 +2235,15 @@ const FormBackend = () => {
                     <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
                   ))}
                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-slate-700">วันที่ประเมิน</label>
+                <input
+                  type="date"
+                  value={editEvalFormData.submittedAt || ''}
+                  onChange={(e) => setEditEvalFormData({ ...editEvalFormData, submittedAt: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none cursor-pointer"
+                />
               </div>
               {[1, 2, 3, 4, 5].map((qNum) => (
                 <div key={`q${qNum}`} className="flex flex-col gap-1">

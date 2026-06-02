@@ -9,6 +9,7 @@ interface Message {
 
 const LiveChat = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDocked, setIsDocked] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', sender: 'bot', text: 'สวัสดีครับ IT Support ยินดีให้บริการ มีอะไรให้ช่วยเหลือไหมครับ?', timestamp: new Date() }
   ]);
@@ -80,39 +81,59 @@ const LiveChat = () => {
 
   return (
     <>
-      {/* Floating Button Container */}
-      <div className="fixed bottom-6 right-6 z-[1000] flex items-center justify-center">
-        {/* Strobe Effect */}
-        {!isOpen && (
-          <div className="absolute inset-0 rounded-2xl border-[3px] border-[#F26522] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-75 pointer-events-none"></div>
-        )}
-        
+      {isDocked && !isOpen ? (
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`relative shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-105 ${
-            isOpen ? 'bg-error text-white rotate-90 p-4 rounded-full w-16 h-16 overflow-hidden' : 'bg-transparent p-0 rounded-2xl'
-          }`}
-          style={{
-              boxShadow: isOpen ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}
+          onClick={() => setIsDocked(false)}
+          className="fixed bottom-12 right-0 bg-[#F26522] shadow-[0_4px_15px_rgba(242,101,34,0.4)] text-white py-3 px-2 rounded-l-2xl z-[1000] hover:pr-4 hover:bg-[#e05a1d] transition-all flex items-center group cursor-pointer"
+          title="Show Live Chat"
         >
-          {isOpen ? (
-            <span className="material-symbols-outlined text-[32px] transition-transform">
-              close
-            </span>
-          ) : (
-            <img 
-              src="/live-chat-icon.jpg" 
-              alt="Live Chat" 
-              className="w-32 sm:w-40 h-auto object-contain rounded-2xl" 
-            />
-          )}
+          <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">chat</span>
         </button>
-      </div>
+      ) : (
+        <>
+          {/* Floating Button Container */}
+          <div className="fixed bottom-6 right-6 z-[1000] flex items-center justify-center">
+            {/* Strobe Effect */}
+            {!isOpen && (
+              <div className="absolute inset-0 rounded-2xl border-[3px] border-[#F26522] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-75 pointer-events-none"></div>
+            )}
+            
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={`relative shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                isOpen ? 'bg-error text-white rotate-90 p-4 rounded-full w-16 h-16 overflow-hidden' : 'bg-transparent p-0 rounded-2xl'
+              }`}
+              style={{
+                  boxShadow: isOpen ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {isOpen ? (
+                <span className="material-symbols-outlined text-[32px] transition-transform">
+                  close
+                </span>
+              ) : (
+                <img 
+                  src="/live-chat-icon.jpg" 
+                  alt="Live Chat" 
+                  className="w-32 sm:w-40 h-auto object-contain rounded-2xl relative z-10" 
+                />
+              )}
+            </button>
 
-      {/* Chat Window */}
-      {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[350px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col z-[1000] h-[500px] max-h-[calc(100vh-8rem)] animate-[fadeIn_0.2s_ease-out] border border-slate-100 flex flex-col">
+            {!isOpen && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsDocked(true); }}
+                className="absolute -top-3 -right-3 bg-white border border-slate-200 text-slate-500 rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-slate-100 hover:text-slate-800 transition-colors z-20"
+                title="Hide to edge"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            )}
+          </div>
+
+          {/* Chat Window */}
+          {isOpen && (
+            <div className="fixed bottom-24 right-6 w-[350px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col z-[1000] h-[500px] max-h-[calc(100vh-8rem)] animate-[fadeIn_0.2s_ease-out] border border-slate-100 flex flex-col">
           {/* Header */}
           <div className="bg-[#F26522] p-4 text-white flex items-center justify-between shadow-md relative z-10">
             <div className="flex items-center gap-3">
@@ -180,6 +201,8 @@ const LiveChat = () => {
             </form>
           </div>
         </div>
+          )}
+        </>
       )}
     </>
   );
