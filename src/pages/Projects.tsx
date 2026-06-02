@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -35,39 +36,6 @@ const priorityStyles = {
   'High': 'bg-rose-50 text-rose-700 border-rose-200/60',
 };
 
-// Function to compress images before converting to base64 to save database space
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height && width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
-        } else if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to JPEG with 60% quality
-      };
-      img.onerror = (err) => reject(err);
-    };
-    reader.onerror = (err) => reject(err);
-  });
-};
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -93,6 +61,7 @@ const Projects = () => {
     images: [] as string[],
     pdfReports: [] as { name: string; data: string }[],
   });
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const loadProjects = async () => {
     try {
@@ -128,42 +97,44 @@ const Projects = () => {
     const files = e.target.files;
     if (!files) return;
 
+    setIsUploadingFiles(true);
     for (const file of Array.from(files)) {
       try {
-        const compressedBase64 = await compressImage(file);
+        const storageRef = ref(storage, `projects/images/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
         setFormData((prev) => ({
           ...prev,
-          images: [...prev.images, compressedBase64],
+          images: [...prev.images, url],
         }));
       } catch (error) {
-        console.error("Error compressing image:", error);
-        alert(`Failed to process image: ${file.name}`);
+        console.error("Error uploading image:", error);
+        alert(`Failed to upload image: ${file.name}`);
       }
     }
+    setIsUploadingFiles(false);
   };
 
-  const handlePDFUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    const MAX_PDF_SIZE = 500 * 1024; // Limit PDF to 500KB
-
-    Array.from(files).forEach((file) => {
-      if (file.size > MAX_PDF_SIZE) {
-        alert(`PDF file "${file.name}" is too large (${Math.round(file.size / 1024)}KB).\nPlease upload a file smaller than 500KB to fit within database limits.`);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
+    setIsUploadingFiles(true);
+    for (const file of Array.from(files)) {
+      try {
+        const storageRef = ref(storage, `projects/pdfs/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
         setFormData((prev) => ({
           ...prev,
-          pdfReports: [...prev.pdfReports, { name: file.name, data: base64 }],
+          pdfReports: [...prev.pdfReports, { name: file.name, data: url }],
         }));
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (error) {
+        console.error("Error uploading PDF:", error);
+        alert(`Failed to upload PDF: ${file.name}`);
+      }
+    }
+    setIsUploadingFiles(false);
   };
 
   const removeImage = (index: number) => {
@@ -203,14 +174,6 @@ const Projects = () => {
 
     // แปลงข้อมูลเพื่อลบค่า undefined แฝงทั้งหมดที่ทำให้ Firestore บันทึกไม่ได้
     const payload = JSON.parse(JSON.stringify(rawPayload));
-
-    // ตรวจสอบขนาดของ Document ก่อนบันทึกลง Firestore (Limit: 1,048,576 bytes)
-    const payloadSize = new Blob([JSON.stringify(payload)]).size;
-    if (payloadSize > 1000000) { // เผื่อ overhead เล็กน้อย ใช้ค่า 1MB = 1,000,000 bytes
-      alert(`The total project size is too large to save (${(payloadSize / 1024 / 1024).toFixed(2)} MB).\nPlease remove some images or PDFs. The database limit is 1 MB per project.`);
-      setIsSaving(false);
-      return;
-    }
 
     await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'projects', projectId), payload);
     
@@ -592,9 +555,13 @@ const Projects = () => {
                 <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Project Images <span className="normal-case tracking-normal font-medium text-slate-400">(Cover Image)</span></label>
                 <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-slate-50 hover:bg-[#27619d]/5 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer hover:border-[#27619d]/50 group">
                   <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-[24px] text-[#27619d]">add_photo_alternate</span>
+                    {isUploadingFiles ? (
+                      <span className="material-symbols-outlined text-[24px] text-[#27619d] animate-spin">progress_activity</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[24px] text-[#27619d]">add_photo_alternate</span>
+                    )}
                   </div>
-                  <span className="font-bold text-slate-600 text-sm">Click to upload images</span>
+                  <span className="font-bold text-slate-600 text-sm">{isUploadingFiles ? 'Uploading images...' : 'Click to upload images'}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -626,9 +593,13 @@ const Projects = () => {
                 <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">PDF Reports</label>
                 <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-slate-50 hover:bg-[#27619d]/5 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer hover:border-[#27619d]/50 group">
                   <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-[24px] text-red-500">picture_as_pdf</span>
+                    {isUploadingFiles ? (
+                      <span className="material-symbols-outlined text-[24px] text-red-500 animate-spin">progress_activity</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[24px] text-red-500">picture_as_pdf</span>
+                    )}
                   </div>
-                  <span className="font-bold text-slate-600 text-sm">Click to upload PDF files</span>
+                  <span className="font-bold text-slate-600 text-sm">{isUploadingFiles ? 'Uploading PDFs...' : 'Click to upload PDF files'}</span>
                   <input
                     type="file"
                     accept=".pdf"
@@ -669,9 +640,9 @@ const Projects = () => {
               </button>
               <button
                 onClick={handleSave}
-                disabled={!formData.name.trim() || isSaving}
+                disabled={!formData.name.trim() || isSaving || isUploadingFiles}
                 className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                  !formData.name.trim() || isSaving
+                  !formData.name.trim() || isSaving || isUploadingFiles
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                     : 'bg-[#27619d] text-white hover:bg-[#1e4d7a] hover:-translate-y-0.5 shadow-lg shadow-[#27619d]/20'
                 }`}
