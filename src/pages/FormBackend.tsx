@@ -29,6 +29,11 @@ interface ProjectRef {
   name: string;
 }
 
+interface PdfPreviewState {
+  url: string;
+  filename: string;
+}
+
 const formTabs = [
   { id: '001', label: 'FM-IT-001', collection: 'repairRequests' },
   { id: '002', label: 'FM-IT-002', collection: 'appointments' },
@@ -37,7 +42,7 @@ const formTabs = [
   { id: '005', label: 'FM-IT-005', collection: 'licenseRequests' },
   { id: '006', label: 'FM-IT-006', collection: 'userRegistrations' },
   { id: '007', label: 'FM-IT-007', collection: 'remoteSupports' },
-  { id: 'evaluation', label: 'Evaluation', collection: '' },
+  { id: 'evaluation', label: 'Evaluation', collection: 'projectEvaluations' },
 ];
 
 const tabColumnsConfig: Record<string, { id: string; label: string }[]> = {
@@ -507,6 +512,11 @@ const FormBackend = () => {
   const [evaluationRecords, setEvaluationRecords] = useState<EvaluationRecord[]>([]);
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalSearchQuery, setEvalSearchQuery] = useState('');
+  const [projectsList, setProjectsList] = useState<{id: string, name: string}[]>([]);
+  const [selectedEvalRecord, setSelectedEvalRecord] = useState<EvaluationRecord | null>(null);
+  const [isEditingEvalRecord, setIsEditingEvalRecord] = useState(false);
+  const [editEvalFormData, setEditEvalFormData] = useState<Record<string, any>>({});
+  const [isSavingEvalRecord, setIsSavingEvalRecord] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -536,7 +546,7 @@ const FormBackend = () => {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setPreviewPdf((current) => {
+        setPreviewPdf((current: PdfPreviewState | null) => {
           if (current) {
             URL.revokeObjectURL(current.url);
           }
@@ -567,10 +577,13 @@ const FormBackend = () => {
           ]);
 
           const projectMap: Record<string, string> = {};
+          const pList: {id: string, name: string}[] = [];
           projectsSnap.docs.forEach((d) => {
             const data = d.data() as ProjectRef;
             projectMap[d.id] = data.name || d.id;
+            pList.push({ id: d.id, name: data.name || d.id });
           });
+          setProjectsList(pList);
 
           const evals: EvaluationRecord[] = evalsSnap.docs.map((d) => ({
             id: d.id,
@@ -662,6 +675,20 @@ const FormBackend = () => {
   };
 
   const getAvailableFields = (tabId: string) => {
+    if (tabId === 'evaluation') {
+      return [
+        { id: 'projectName', label: 'Project Name' },
+        { id: 'evaluatorName', label: 'Evaluator Name' },
+        { id: 'evaluatorEmail', label: 'Evaluator Email' },
+        { id: 'q1', label: 'Question 1 (Score 1-5)' },
+        { id: 'q2', label: 'Question 2 (Score 1-5)' },
+        { id: 'q3', label: 'Question 3 (Score 1-5)' },
+        { id: 'q4', label: 'Question 4 (Score 1-5)' },
+        { id: 'q5', label: 'Question 5 (Score 1-5)' },
+        { id: 'comment', label: 'Comment' },
+        { id: 'submittedAt', label: 'Submitted At (YYYY-MM-DD)' }
+      ];
+    }
     const formFields = tabColumnsConfig[tabId] || tabColumnsConfig['fallback'];
     return [
       { id: 'id', label: 'Record ID' },
@@ -675,15 +702,51 @@ const FormBackend = () => {
     if (!targetForm) return;
 
     const fields = getAvailableFields(activeTab);
-    // สร้าง CSV Header โดยการวนลูปเอา label ของแต่ละฟิลด์มาใส่
     const headers = fields.map(f => `"${f.label}"`).join(',');
     
-    // สร้างไฟล์และดาวน์โหลด (ใช้ \uFEFF เพื่อให้รองรับภาษาไทยใน Excel)
-    const blob = new Blob(['\uFEFF' + headers], { type: 'text/csv;charset=utf-8;' });
+    const rows = [headers];
+
+    if (activeTab === 'evaluation') {
+      evaluationRecords.forEach(record => {
+        const row = fields.map(field => {
+          let value = '';
+          if (field.id === 'projectName') value = record.projectName || '';
+          else if (field.id === 'evaluatorName') value = record.evaluatorName || '';
+          else if (field.id === 'evaluatorEmail') value = record.evaluatorEmail || '';
+          else if (field.id === 'q1') value = record.ratings?.q1?.toString() || '';
+          else if (field.id === 'q2') value = record.ratings?.q2?.toString() || '';
+          else if (field.id === 'q3') value = record.ratings?.q3?.toString() || '';
+          else if (field.id === 'q4') value = record.ratings?.q4?.toString() || '';
+          else if (field.id === 'q5') value = record.ratings?.q5?.toString() || '';
+          else if (field.id === 'comment') value = record.comment || '';
+          else if (field.id === 'submittedAt') value = record.submittedAt ? new Date(record.submittedAt).toLocaleDateString('en-CA') : '';
+          
+          return `"${String(value).replace(/"/g, '""')}"`;
+        });
+        rows.push(row.join(','));
+      });
+    } else {
+      records.forEach(record => {
+        const row = fields.map(field => {
+          let value: any = '';
+          if (field.id === 'id') value = record.id;
+          else if (field.id === 'status') value = record.status || 'pending';
+          else {
+            const cellVal = renderCellContent(field.id, record, activeTab);
+            value = cellVal !== '-' ? cellVal : '';
+          }
+          return `"${String(value).replace(/"/g, '""')}"`;
+        });
+        rows.push(row.join(','));
+      });
+    }
+
+    const csvContent = rows.join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${targetForm.label}-Template.csv`);
+    link.setAttribute('download', `${targetForm.label}-Export.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -707,8 +770,26 @@ const FormBackend = () => {
       });
       if (hasData) {
         if (!record.id) record.id = `IMP-${Date.now()}-${index}`;
-        if (!record.createdAt) record.createdAt = Timestamp.now();
-        if (!record.status) record.status = 'pending';
+        
+        if (importTargetTab === 'evaluation') {
+          record.ratings = {
+            q1: Number(record.q1) || 0,
+            q2: Number(record.q2) || 0,
+            q3: Number(record.q3) || 0,
+            q4: Number(record.q4) || 0,
+            q5: Number(record.q5) || 0,
+          };
+          delete record.q1;
+          delete record.q2;
+          delete record.q3;
+          delete record.q4;
+          delete record.q5;
+          if (!record.submittedAt) record.submittedAt = new Date().toISOString();
+        } else {
+          if (!record.createdAt) record.createdAt = Timestamp.now();
+          if (!record.status) record.status = 'pending';
+        }
+        
         parsedRecords.push(record);
       }
     });
@@ -818,6 +899,35 @@ const FormBackend = () => {
       setCsvHeaders([]);
       setCsvData([]);
       setColumnMapping({});
+
+      if (importTargetTab === 'evaluation' && activeTab === 'evaluation') {
+        setEvalLoading(true);
+        try {
+          const [evalsSnap, projectsSnap] = await Promise.all([
+            getDocs(collection(db, `${APP_NAME}/root/projectEvaluations`)),
+            getDocs(collection(db, `${APP_NAME}/root/projects`)),
+          ]);
+          const projectMap: Record<string, string> = {};
+          const pList: {id: string, name: string}[] = [];
+          projectsSnap.docs.forEach((d) => { 
+            const pData = d.data() as ProjectRef;
+            projectMap[d.id] = pData.name || d.id; 
+            pList.push({ id: d.id, name: pData.name || d.id });
+          });
+          setProjectsList(pList);
+          const evals: EvaluationRecord[] = evalsSnap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<EvaluationRecord, 'id'>),
+            projectName: projectMap[(d.data() as EvaluationRecord).projectId] || (d.data() as EvaluationRecord).projectId,
+          }));
+          evals.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+          setEvaluationRecords(evals);
+        } catch (err) {
+          console.error('Error reloading evaluations:', err);
+        } finally {
+          setEvalLoading(false);
+        }
+      }
     } catch (error) {
       setImportErrors(['Failed to import records: ' + (error as Error).message]);
     }
@@ -892,6 +1002,65 @@ const FormBackend = () => {
       alert('Failed to update record.');
     } finally {
       setIsSavingRecord(false);
+    }
+  };
+
+  const handleDeleteEvalRecord = async (recordId: string) => {
+    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, recordId));
+      setEvaluationRecords(prev => prev.filter(r => r.id !== recordId));
+    } catch (error) {
+      console.error('Error deleting evaluation:', error);
+      alert('Failed to delete evaluation.');
+    }
+  };
+
+  const handleEditEvalClick = (record: EvaluationRecord) => {
+    setSelectedEvalRecord(record);
+    setEditEvalFormData({
+      projectId: record.projectId || '',
+      projectName: record.projectName || '',
+      q1: record.ratings?.q1 || 0,
+      q2: record.ratings?.q2 || 0,
+      q3: record.ratings?.q3 || 0,
+      q4: record.ratings?.q4 || 0,
+      q5: record.ratings?.q5 || 0,
+      comment: record.comment || ''
+    });
+    setIsEditingEvalRecord(true);
+  };
+
+  const handleSaveEvalRecord = async () => {
+    if (!selectedEvalRecord) return;
+    setIsSavingEvalRecord(true);
+    try {
+      const docRef = doc(db, `${APP_NAME}/root/projectEvaluations`, selectedEvalRecord.id);
+      const updatedData = {
+        projectId: editEvalFormData.projectId || '',
+        ratings: {
+          q1: Number(editEvalFormData.q1),
+          q2: Number(editEvalFormData.q2),
+          q3: Number(editEvalFormData.q3),
+          q4: Number(editEvalFormData.q4),
+          q5: Number(editEvalFormData.q5),
+        },
+        comment: editEvalFormData.comment || ''
+      };
+      await setDoc(docRef, updatedData, { merge: true });
+      
+      setEvaluationRecords(prev => prev.map(r => 
+        r.id === selectedEvalRecord.id 
+          ? { ...r, ...updatedData, projectName: editEvalFormData.projectName || updatedData.projectId } 
+          : r
+      ));
+      setIsEditingEvalRecord(false);
+      setSelectedEvalRecord(null);
+    } catch (error) {
+      console.error('Error updating evaluation:', error);
+      alert('Failed to update evaluation.');
+    } finally {
+      setIsSavingEvalRecord(false);
     }
   };
 
@@ -991,7 +1160,13 @@ const FormBackend = () => {
                           getDocs(collection(db, `${APP_NAME}/root/projects`)),
                         ]);
                         const projectMap: Record<string, string> = {};
-                        projectsSnap.docs.forEach((d) => { projectMap[d.id] = (d.data() as ProjectRef).name || d.id; });
+                        const pList: {id: string, name: string}[] = [];
+                        projectsSnap.docs.forEach((d) => { 
+                          const pData = d.data() as ProjectRef;
+                          projectMap[d.id] = pData.name || d.id; 
+                          pList.push({ id: d.id, name: pData.name || d.id });
+                        });
+                        setProjectsList(pList);
                         const evals: EvaluationRecord[] = evalsSnap.docs.map((d) => ({
                           id: d.id,
                           ...(d.data() as Omit<EvaluationRecord, 'id'>),
@@ -1035,6 +1210,7 @@ const FormBackend = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-3 py-2 font-bold whitespace-nowrap">Action</th>
                         <th className="px-3 py-2 font-bold whitespace-nowrap">#</th>
                         <th className="px-3 py-2 font-bold whitespace-nowrap">Project</th>
                         <th className="px-3 py-2 font-bold whitespace-nowrap">Evaluator</th>
@@ -1066,6 +1242,16 @@ const FormBackend = () => {
                         );
                         return (
                           <tr key={ev.id} className="hover:bg-amber-50/30 transition-colors">
+                            <td className="px-3 py-1.5 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleEditEvalClick(ev)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
+                                  <span className="material-symbols-outlined text-sm">edit</span>
+                                </button>
+                                <button onClick={() => handleDeleteEvalRecord(ev.id)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Delete">
+                                  <span className="material-symbols-outlined text-sm">delete</span>
+                                </button>
+                              </div>
+                            </td>
                             <td className="px-3 py-1.5 text-slate-500 font-medium whitespace-nowrap">{idx + 1}</td>
                             <td className="px-3 py-1.5 whitespace-nowrap">
                               <div className="font-bold text-slate-800 text-sm leading-tight">{ev.projectName || ev.projectId}</div>
@@ -1273,7 +1459,7 @@ const FormBackend = () => {
                                   e.stopPropagation();
                                   const pdf = await handleExportPDF(record, activeLabel);
                                   if (pdf) {
-                                    setPreviewPdf((current) => {
+                                    setPreviewPdf((current: PdfPreviewState | null) => {
                                       if (current) {
                                         URL.revokeObjectURL(current.url);
                                       }
@@ -1406,7 +1592,7 @@ const FormBackend = () => {
         <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99998 }}>
           <div
             className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-            onClick={() => setPreviewPdf((current) => {
+            onClick={() => setPreviewPdf((current: PdfPreviewState | null) => {
               if (current) {
                 URL.revokeObjectURL(current.url);
               }
@@ -1419,7 +1605,7 @@ const FormBackend = () => {
                 <h2 className="text-base font-bold text-white">{previewPdf.filename}</h2>
                 <button
                   type="button"
-                  onClick={() => setPreviewPdf((current) => {
+                  onClick={() => setPreviewPdf((current: PdfPreviewState | null) => {
                     if (current) {
                       URL.revokeObjectURL(current.url);
                     }
@@ -1441,7 +1627,7 @@ const FormBackend = () => {
               <div className="flex flex-wrap items-center justify-center gap-3 border-t border-white/10 bg-black/60 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => setPreviewPdf((current) => {
+                  onClick={() => setPreviewPdf((current: PdfPreviewState | null) => {
                     if (current) {
                       URL.revokeObjectURL(current.url);
                     }
@@ -1596,7 +1782,7 @@ const FormBackend = () => {
                       {importPreview.slice(0, 100).map((record, index) => (
                         <tr key={index} className="hover:bg-slate-50">
                           {Object.values(record).slice(0, 6).map((val: any, i) => (
-                            <td key={i} className="px-3 py-2 truncate max-w-[150px]">{String(val)}</td>
+                            <td key={i} className="px-3 py-2 truncate max-w-[150px]">{typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)}</td>
                           ))}
                           {Object.keys(record).length > 6 && (
                             <td className="px-3 py-2 text-slate-400">...</td>
@@ -1821,6 +2007,88 @@ const FormBackend = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+      {isEditingEvalRecord && selectedEvalRecord && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99990 }}>
+          <div className="absolute inset-0 bg-[#2c3437]/40 backdrop-blur-sm" onClick={() => { setIsEditingEvalRecord(false); setSelectedEvalRecord(null); }} />
+          <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-800 tracking-tight font-display">Edit Evaluation</h2>
+                <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-wider">{selectedEvalRecord.projectName || selectedEvalRecord.projectId}</p>
+              </div>
+              <button onClick={() => { setIsEditingEvalRecord(false); setSelectedEvalRecord(null); }} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+                <span className="material-symbols-outlined text-slate-500">close</span>
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-slate-700">Project</label>
+                <select
+                  value={editEvalFormData.projectId || ''}
+                  onChange={(e) => {
+                    const selId = e.target.value;
+                    const selProj = projectsList.find(p => p.id === selId);
+                    setEditEvalFormData({ 
+                      ...editEvalFormData, 
+                      projectId: selId,
+                      projectName: selProj ? selProj.name : selId
+                    });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none cursor-pointer"
+                >
+                  <option value="">-- Select Project --</option>
+                  {projectsList.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                  ))}
+                </select>
+              </div>
+              {[1, 2, 3, 4, 5].map((qNum) => (
+                <div key={`q${qNum}`} className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Question {qNum} Score</label>
+                  <select
+                    value={editEvalFormData[`q${qNum}`] || 0}
+                    onChange={(e) => setEditEvalFormData({ ...editEvalFormData, [`q${qNum}`]: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none cursor-pointer"
+                  >
+                    {[0, 1, 2, 3, 4, 5].map(score => (
+                      <option key={score} value={score}>{score}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-slate-700">Comment</label>
+                <textarea
+                  value={editEvalFormData.comment || ''}
+                  onChange={(e) => setEditEvalFormData({ ...editEvalFormData, comment: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 focus:ring-2 focus:ring-[#27619D] outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 pt-5 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => { setIsEditingEvalRecord(false); setSelectedEvalRecord(null); }}
+                className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors text-sm"
+                disabled={isSavingEvalRecord}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEvalRecord}
+                disabled={isSavingEvalRecord}
+                className="px-5 py-2.5 rounded-xl font-bold bg-[#27619D] text-white hover:bg-[#1e4d7a] transition-colors shadow-lg shadow-[#27619D]/20 text-sm flex items-center gap-2"
+              >
+                {isSavingEvalRecord && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>,
         document.body
