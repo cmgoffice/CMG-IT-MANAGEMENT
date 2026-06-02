@@ -520,6 +520,38 @@ const FormBackend = () => {
   const [editEvalFormData, setEditEvalFormData] = useState<Record<string, any>>({});
   const [isSavingEvalRecord, setIsSavingEvalRecord] = useState(false);
 
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState({ isDragging: false, startX: 0, scrollLeft: 0, isDragged: false });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!tableContainerRef.current) return;
+    setDragState({
+      isDragging: true,
+      startX: e.pageX,
+      scrollLeft: tableContainerRef.current.scrollLeft,
+      isDragged: false
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setDragState(prev => ({ ...prev, isDragging: false }));
+  };
+
+  const handleMouseUp = () => {
+    setDragState(prev => ({ ...prev, isDragging: false }));
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragState.isDragging || !tableContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX;
+    const walk = (x - dragState.startX) * 1.5; // ปรับความเร็วในการเลื่อนได้ที่นี่
+    if (Math.abs(x - dragState.startX) > 5 && !dragState.isDragged) {
+      setDragState(prev => ({ ...prev, isDragged: true }));
+    }
+    tableContainerRef.current.scrollLeft = dragState.scrollLeft - walk;
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -1366,7 +1398,14 @@ const FormBackend = () => {
                 );
               }
               return (
-                <div className="overflow-x-auto">
+                <div 
+                  className={`overflow-x-auto ${dragState.isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+                  ref={tableContainerRef}
+                  onMouseDown={handleMouseDown}
+                  onMouseLeave={handleMouseLeave}
+                  onMouseUp={handleMouseUp}
+                  onMouseMove={handleMouseMove}
+                >
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -1404,10 +1443,10 @@ const FormBackend = () => {
                           <tr key={ev.id} className="hover:bg-amber-50/30 transition-colors">
                             <td className="px-2 py-1 whitespace-nowrap">
                               <div className="flex items-center gap-2">
-                                <button onClick={() => handleEditEvalClick(ev)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
+                                <button onClick={(e) => { if (dragState.isDragged) { e.preventDefault(); e.stopPropagation(); return; } handleEditEvalClick(ev); }} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
                                   <span className="material-symbols-outlined text-sm">edit</span>
                                 </button>
-                                <button onClick={() => handleDeleteEvalRecord(ev.id)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Delete">
+                                <button onClick={(e) => { if (dragState.isDragged) { e.preventDefault(); e.stopPropagation(); return; } handleDeleteEvalRecord(ev.id); }} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Delete">
                                   <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>
                               </div>
@@ -1558,7 +1597,14 @@ const FormBackend = () => {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
+            <div 
+              className={`overflow-x-auto ${dragState.isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+              ref={tableContainerRef}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeave}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+            >
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider border-b border-slate-200">
@@ -1570,7 +1616,7 @@ const FormBackend = () => {
                         <th 
                           key={col.id} 
                           className={`px-3 py-1 font-bold whitespace-nowrap select-none group ${isSortable ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}`}
-                          onClick={() => isSortable && handleSort(col.id)}
+                          onClick={() => { if (!dragState.isDragged && isSortable) handleSort(col.id); }}
                         >
                           <div className="flex items-center gap-1">
                             {col.label}
@@ -1598,7 +1644,7 @@ const FormBackend = () => {
                         : 'bg-amber-100 text-amber-700';
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setSelectedRecord(record)}>
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={(e) => { if (dragState.isDragged) return; setSelectedRecord(record); }}>
                         <td className="px-3 py-1 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         {orderedColumns.map(col => {
                           if (hiddenColumns.has(col.id)) return null;
@@ -1615,7 +1661,7 @@ const FormBackend = () => {
                                 {attachments.map((url, i) => (
                                   <div
                                     key={i}
-                                    onClick={(e) => { e.stopPropagation(); setPreviewImageUrl(url); }}
+                                    onClick={(e) => { e.stopPropagation(); if (dragState.isDragged) return; setPreviewImageUrl(url); }}
                                     className="relative w-12 h-12 rounded-lg overflow-hidden cursor-pointer border border-slate-200 hover:ring-2 hover:ring-[#27619D] hover:shadow-md transition-all group shrink-0 bg-slate-100"
                                     title={`View Photo ${i + 1}`}
                                   >
@@ -1634,6 +1680,7 @@ const FormBackend = () => {
                                 type="button"
                                 onClick={async (e) => {
                                   e.stopPropagation();
+                                  if (dragState.isDragged) return;
                                   const pdf = await handleExportPDF(record, activeLabel);
                                   if (pdf) {
                                     setPreviewPdf((current: PdfPreviewState | null) => {
@@ -1653,7 +1700,7 @@ const FormBackend = () => {
                           } else if (col.id === 'delete') {
                             isComponent = true;
                             cellContent = (
-                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteRecord(record.id); }} className="flex items-center gap-1 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm" title="Delete Record">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); if (dragState.isDragged) return; handleDeleteRecord(record.id); }} className="flex items-center gap-1 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm" title="Delete Record">
                                 <span className="material-symbols-outlined text-base">delete</span>
                               </button>
                             );
