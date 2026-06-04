@@ -403,13 +403,13 @@ async function handleExportPDF(record: FormRecord, formLabel: string): Promise<P
     return;
   }
 
-  // กรองฟิลด์ที่ไม่ต้องการให้แสดงในเนื้อหาหลักออก
+  // เธเธฃเธญเธเธเธดเธฅเธ”เนเธ—เธตเนเนเธกเนเธ•เนเธญเธเธเธฒเธฃเนเธซเนเนเธชเธ”เธเนเธเน€เธเธทเนเธญเธซเธฒเธซเธฅเธฑเธเธญเธญเธ
   const excludeKeys = ['id', 'createdAt', 'attachments', 'status', 'reporter'];
   
   const renderValue = (val: unknown): string => {
     if (typeof val === 'boolean') return val ? 'Yes' : 'No';
     if (typeof val === 'object' && val !== null) {
-      if ('seconds' in val && 'nanoseconds' in val) return formatDate(val); // จัดการ Timestamp
+      if ('seconds' in val && 'nanoseconds' in val) return formatDate(val); // เธเธฑเธ”เธเธฒเธฃ Timestamp
       return Object.entries(val as Record<string, unknown>)
         .filter(([_, v]) => v === true || (typeof v === 'string' && v.trim() !== ''))
         .map(([k, v]) => {
@@ -421,7 +421,7 @@ async function handleExportPDF(record: FormRecord, formLabel: string): Promise<P
     return String(val || '-');
   };
 
-  // วนลูปข้อมูลมาสร้างเป็นบรรทัด
+  // เธงเธเธฅเธนเธเธเนเธญเธกเธนเธฅเธกเธฒเธชเธฃเนเธฒเธเน€เธเนเธเธเธฃเธฃเธ—เธฑเธ”
   const dataRows = Object.entries(record)
     .filter(([key]) => !excludeKeys.includes(key))
     .map(([key, value]) => `
@@ -434,7 +434,7 @@ async function handleExportPDF(record: FormRecord, formLabel: string): Promise<P
   const reporterName = getReporterName(record);
   const submitDate = formatDate(record.createdAt);
 
-  // โครงสร้าง HTML สำหรับสร้างเอกสาร PDF
+  // เนเธเธฃเธเธชเธฃเนเธฒเธ HTML เธชเธณเธซเธฃเธฑเธเธชเธฃเนเธฒเธเน€เธญเธเธชเธฒเธฃ PDF
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -545,7 +545,7 @@ const FormBackend = () => {
     if (!dragState.isDragging || !tableContainerRef.current) return;
     e.preventDefault();
     const x = e.pageX;
-    const walk = (x - dragState.startX) * 1.5; // ปรับความเร็วในการเลื่อนได้ที่นี่
+    const walk = (x - dragState.startX) * 1.5; // เธเธฃเธฑเธเธเธงเธฒเธกเน€เธฃเนเธงเนเธเธเธฒเธฃเน€เธฅเธทเนเธญเธเนเธ”เนเธ—เธตเนเธเธตเน
     if (Math.abs(x - dragState.startX) > 5 && !dragState.isDragged) {
       setDragState(prev => ({ ...prev, isDragged: true }));
     }
@@ -1049,6 +1049,17 @@ const FormBackend = () => {
     }
   };
 
+  const handleDeleteEvaluation = async (evalId: string) => {
+    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, evalId));
+      setEvaluationRecords(prev => prev.filter(r => r.id !== evalId));
+    } catch (error) {
+      console.error('Error deleting evaluation:', error);
+      alert('Failed to delete evaluation.');
+    }
+  };
+
   const handleDeleteAll = async () => {
     if (filteredRecords.length === 0) return;
     if (!window.confirm(`Are you sure you want to delete ALL ${filteredRecords.length} displayed records? THIS ACTION CANNOT BE UNDONE!`)) return;
@@ -1149,10 +1160,10 @@ const FormBackend = () => {
         }
       }
 
-      // บันทึกการแก้ไขแบบ Merge เพื่อไม่ให้กระทบฟิลด์อื่นๆ ที่อาจจะซ่อนอยู่ (เช่น รูปภาพ)
+      // เธเธฑเธเธ—เธถเธเธเธฒเธฃเนเธเนเนเธเนเธเธ Merge เน€เธเธทเนเธญเนเธกเนเนเธซเนเธเธฃเธฐเธ—เธเธเธดเธฅเธ”เนเธญเธทเนเธเน เธ—เธตเนเธญเธฒเธเธเธฐเธเนเธญเธเธญเธขเธนเน (เน€เธเนเธ เธฃเธนเธเธ เธฒเธ)
       await setDoc(docRef, payload, { merge: true });
       
-      // อัปเดตข้อมูลที่แสดงบน Modal ทันที
+      // เธญเธฑเธเน€เธ”เธ•เธเนเธญเธกเธนเธฅเธ—เธตเนเนเธชเธ”เธเธเธ Modal เธ—เธฑเธเธ—เธต
       setSelectedRecord({ ...selectedRecord, ...payload });
       setIsEditingRecord(false);
     } catch (error) {
@@ -1197,7 +1208,7 @@ const FormBackend = () => {
       submittedAt: record.submittedAt 
         ? (() => {
             try {
-              // แปลงเป็น YYYY-MM-DD สำหรับ input type="date"
+              // เนเธเธฅเธเน€เธเนเธ YYYY-MM-DD เธชเธณเธซเธฃเธฑเธ input type="date"
               return new Date(record.submittedAt).toLocaleDateString('en-CA');
             } catch { return ''; }
           })() 
@@ -1335,7 +1346,7 @@ const FormBackend = () => {
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
                   <input
                     type="text"
-                    placeholder="ค้นหาโปรเจ็ค หรือผู้ประเมิน..."
+                    placeholder="เธเนเธเธซเธฒเนเธเธฃเน€เธเนเธ เธซเธฃเธทเธญเธเธนเนเธเธฃเธฐเน€เธกเธดเธ..."
                     value={evalSearchQuery}
                     onChange={(e) => setEvalSearchQuery(e.target.value)}
                     className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm w-64"
@@ -1393,7 +1404,7 @@ const FormBackend = () => {
                 return (
                   <div className="p-12 text-center text-slate-400">
                     <span className="material-symbols-outlined text-4xl mb-3 inline-block" style={{ fontVariationSettings: "'FILL' 1" }}>star_border</span>
-                    <p className="font-medium">{evalSearchQuery ? 'ไม่พบผลการค้นหา' : 'ยังไม่มีการประเมิน'}</p>
+                    <p className="font-medium">{evalSearchQuery ? 'เนเธกเนเธเธเธเธฅเธเธฒเธฃเธเนเธเธซเธฒ' : 'เธขเธฑเธเนเธกเนเธกเธตเธเธฒเธฃเธเธฃเธฐเน€เธกเธดเธ'}</p>
                   </div>
                 );
               }
@@ -1421,6 +1432,7 @@ const FormBackend = () => {
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Q5</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">วันที่ประเมิน</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
+                        <th className="px-3 py-2 font-bold whitespace-nowrap text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1483,8 +1495,17 @@ const FormBackend = () => {
                                   <p className="text-xs text-slate-700 leading-tight line-clamp-2 whitespace-pre-wrap" title={ev.comment}>{ev.comment}</p>
                                 </div>
                               ) : (
-                                <span className="text-slate-400 text-xs italic">ไม่มีความคิดเห็น</span>
+                                <span className="text-slate-400 text-xs italic">เนเธกเนเธกเธตเธเธงเธฒเธกเธเธดเธ”เน€เธซเนเธ</span>
                               )}
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEvaluation(ev.id); }}
+                                className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Evaluation"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1982,7 +2003,7 @@ const FormBackend = () => {
                     <h3 className="font-bold text-red-900 mb-2 text-sm">Import Errors:</h3>
                     <ul className="text-xs text-red-800 space-y-1">
                       {importErrors.map((err, index) => (
-                        <li key={index}>• {err}</li>
+                        <li key={index}>โ€ข {err}</li>
                       ))}
                     </ul>
                   </div>
@@ -2284,7 +2305,7 @@ const FormBackend = () => {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-bold text-slate-700">วันที่ประเมิน</label>
+                <label className="text-sm font-bold text-slate-700">เธงเธฑเธเธ—เธตเนเธเธฃเธฐเน€เธกเธดเธ</label>
                 <input
                   type="date"
                   value={editEvalFormData.submittedAt || ''}

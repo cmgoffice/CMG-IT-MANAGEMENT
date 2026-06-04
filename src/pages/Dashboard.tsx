@@ -510,7 +510,7 @@ const Dashboard = () => {
                           </div>
 
                           {/* Name + status dot */}
-                          <div className="flex-[2] min-w-0">
+                          <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-bold text-on-surface truncate group-hover:text-primary transition-colors leading-tight">
                               {kpi.name}
                             </p>

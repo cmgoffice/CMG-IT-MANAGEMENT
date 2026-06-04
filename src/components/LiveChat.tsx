@@ -39,8 +39,7 @@ const LiveChat = () => {
   const [pendingRequests, setPendingRequests] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Webhook URL
-  const WEBHOOK_URL = 'https://n8n.cmgai.online/webhook/livechat'; 
+  const WEBHOOK_URL = 'https://n8n.cmgai.online/webhook-test/livechat';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +51,6 @@ const LiveChat = () => {
     }
   }, [messages, isOpen]);
 
-  // Save messages to LocalStorage whenever they change
   useEffect(() => {
     localStorage.setItem('cmg_chat_messages', JSON.stringify(messages));
   }, [messages]);
@@ -70,40 +68,46 @@ const LiveChat = () => {
 
     setMessages((prev) => [...prev, newUserMessage]);
     setInputValue('');
-    setPendingRequests(prev => prev + 1);
+    setPendingRequests((prev) => prev + 1);
 
     try {
-      // Webhook Call
       const deviceId = getOrCreateDeviceId();
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: newUserMessage.text,
-          deviceId: deviceId
+          deviceId,
+          timestamp: newUserMessage.timestamp
         })
       });
-      
-      let botText = 'เราได้รับข้อความของคุณแล้ว กำลังส่งเรื่องให้ทีมงานตรวจสอบครับ';
-      try {
-        const data = await response.json();
-        // n8n returns the response in the "output" field based on the setup
-        if (data && data.output) {
-          botText = data.output;
-        } else if (data && data.text) {
-          botText = data.text;
-        }
-      } catch (err) {
-        console.error('Failed to parse webhook response', err);
+
+      if (!response.ok) {
+        throw new Error('Webhook failed');
       }
-      
+
+      let botText = 'เราได้รับข้อความของคุณแล้ว ทีมงานจะรีบตอบกลับโดยเร็วที่สุดครับ';
+      const contentType = response.headers.get('content-type');
+
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data && data.output) botText = data.output;
+        else if (data && data.text) botText = data.text;
+        else if (data && data.message) botText = data.message;
+        else if (data && data.reply) botText = data.reply;
+        else if (typeof data === 'string') botText = data;
+      } else {
+        const textData = await response.text();
+        if (textData && !textData.includes('Workflow was started')) botText = textData;
+      }
+
       const botResponse: Message = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
         sender: 'bot',
         text: botText,
         timestamp: new Date()
       };
-      
+
       setMessages((prev) => [...prev, botResponse]);
     } catch (error) {
       console.error('Webhook error:', error);
@@ -115,7 +119,7 @@ const LiveChat = () => {
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
-      setPendingRequests(prev => Math.max(0, prev - 1));
+      setPendingRequests((prev) => Math.max(0, prev - 1));
     }
   };
 
@@ -131,20 +135,18 @@ const LiveChat = () => {
         </button>
       ) : (
         <>
-          {/* Floating Button Container */}
           <div className="fixed bottom-6 right-6 z-[1000] flex items-center justify-center">
-            {/* Strobe Effect */}
             {!isOpen && (
               <div className="absolute inset-0 rounded-2xl border-[3px] border-[#F26522] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-75 pointer-events-none"></div>
             )}
-            
+
             <button
               onClick={() => setIsOpen(!isOpen)}
               className={`relative shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-105 ${
                 isOpen ? 'bg-error text-white rotate-90 p-4 rounded-full w-16 h-16 overflow-hidden' : 'bg-transparent p-0 rounded-2xl'
               }`}
               style={{
-                  boxShadow: isOpen ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+                boxShadow: isOpen ? '0 10px 25px -5px rgba(239, 68, 68, 0.4)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
               }}
             >
               {isOpen ? (
@@ -152,17 +154,20 @@ const LiveChat = () => {
                   close
                 </span>
               ) : (
-                <img 
-                  src="/live-chat-icon.jpg" 
-                  alt="Live Chat" 
-                  className="w-32 sm:w-40 h-auto object-contain rounded-2xl relative z-10" 
+                <img
+                  src="/live-chat-icon.jpg"
+                  alt="Live Chat"
+                  className="w-32 sm:w-40 h-auto object-contain rounded-2xl relative z-10"
                 />
               )}
             </button>
 
             {!isOpen && (
               <button
-                onClick={(e) => { e.stopPropagation(); setIsDocked(true); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDocked(true);
+                }}
                 className="absolute -top-3 -right-3 bg-white border border-slate-200 text-slate-500 rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-slate-100 hover:text-slate-800 transition-colors z-20"
                 title="Hide to edge"
               >
@@ -171,75 +176,71 @@ const LiveChat = () => {
             )}
           </div>
 
-          {/* Chat Window */}
           {isOpen && (
             <div className="fixed bottom-24 right-6 w-[350px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col z-[1000] h-[500px] max-h-[calc(100vh-8rem)] animate-[fadeIn_0.2s_ease-out] border border-slate-100 flex flex-col">
-          {/* Header */}
-          <div className="bg-[#F26522] p-4 text-white flex items-center justify-between shadow-md relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <span className="material-symbols-outlined text-white">support_agent</span>
-              </div>
-              <div>
-                <h3 className="font-bold font-display text-lg leading-tight">Live Chat</h3>
-                <p className="text-white/80 text-xs font-body">Online - พร้อมให้บริการ</p>
-              </div>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors flex items-center justify-center">
-              <span className="material-symbols-outlined text-[20px]">expand_more</span>
-            </button>
-          </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-4 font-body scrollbar-hide">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div 
-                  className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${
-                    msg.sender === 'user' 
-                      ? 'bg-[#27619D] text-white rounded-tr-none' 
-                      : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'
-                  }`}
-                >
-                  {msg.text}
-                  <div className={`text-[10px] mt-1 text-right ${msg.sender === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <div className="bg-[#F26522] p-4 text-white flex items-center justify-between shadow-md relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <span className="material-symbols-outlined text-white">support_agent</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold font-display text-lg leading-tight">Live Chat</h3>
+                    <p className="text-white/80 text-xs font-body">Online - พร้อมให้บริการ</p>
                   </div>
                 </div>
+                <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">expand_more</span>
+                </button>
               </div>
-            ))}
-            {pendingRequests > 0 && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5">
-                  <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-                  <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
 
-          {/* Input Area */}
-          <div className="p-3 bg-white border-t border-slate-100 z-10">
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="พิมพ์ข้อความ..."
-                className="flex-1 px-4 py-2.5 bg-slate-100 border-none rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#F26522]/50 font-body placeholder:text-slate-400 text-slate-700"
-              />
-              <button
-                type="submit"
-                disabled={!inputValue.trim()}
-                className="w-10 h-10 bg-[#F26522] text-white rounded-full flex items-center justify-center hover:bg-[#e05a1d] transition-colors disabled:opacity-50 shadow-md shrink-0"
-              >
-                <span className="material-symbols-outlined text-[20px] ml-1">send</span>
-              </button>
-            </form>
-          </div>
-        </div>
+              <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-4 font-body scrollbar-hide">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap ${
+                        msg.sender === 'user'
+                          ? 'bg-[#27619D] text-white rounded-tr-none'
+                          : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'
+                      }`}
+                    >
+                      {msg.text}
+                      <div className={`text-[10px] mt-1 text-right ${msg.sender === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {pendingRequests > 0 && (
+                  <div className="flex justify-start">
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5">
+                      <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                      <div className="w-2 h-2 bg-[#F26522] rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="p-3 bg-white border-t border-slate-100 z-10">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="พิมพ์ข้อความ..."
+                    className="flex-1 px-4 py-2.5 bg-slate-100 border-none rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#F26522]/50 font-body placeholder:text-slate-400 text-slate-700"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputValue.trim()}
+                    className="w-10 h-10 bg-[#F26522] text-white rounded-full flex items-center justify-center hover:bg-[#e05a1d] transition-colors disabled:opacity-50 shadow-md shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[20px] ml-1">send</span>
+                  </button>
+                </form>
+              </div>
+            </div>
           )}
         </>
       )}
