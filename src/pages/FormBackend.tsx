@@ -1049,16 +1049,16 @@ const FormBackend = () => {
     }
   };
 
-  const handleDeleteEvaluation = async (evalId: string) => {
-    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
-    try {
-      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, evalId));
-      setEvaluationRecords(prev => prev.filter(r => r.id !== evalId));
-    } catch (error) {
-      console.error('Error deleting evaluation:', error);
-      alert('Failed to delete evaluation.');
-    }
-  };
+  // const handleDeleteEvaluation = async (evalId: string) => {
+  //   if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+  //   try {
+  //     await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, evalId));
+  //     setEvaluationRecords(prev => prev.filter(r => r.id !== evalId));
+  //   } catch (error) {
+  //     console.error('Error deleting evaluation:', error);
+  //     alert('Failed to delete evaluation.');
+  //   }
+  // };
 
   const handleDeleteAll = async () => {
     if (filteredRecords.length === 0) return;
@@ -1127,43 +1127,46 @@ const FormBackend = () => {
       // Re-map flat data back to nested objects specifically for FM-IT-001
       if (activeTab === '001') {
         if (selectedRecord.reporter && typeof selectedRecord.reporter === 'object') {
+          const rep = selectedRecord.reporter as Record<string, any>;
           payload.reporter = {
-            ...selectedRecord.reporter,
-            name: payload.reporterName !== undefined ? payload.reporterName : selectedRecord.reporter.name,
-            department: payload.department !== undefined ? payload.department : selectedRecord.reporter.department,
-            jobTitle: payload.jobTitle !== undefined ? payload.jobTitle : selectedRecord.reporter.jobTitle,
-            phone: payload.phone !== undefined ? payload.phone : selectedRecord.reporter.phone,
-            email: payload.email !== undefined ? payload.email : selectedRecord.reporter.email,
+            ...rep,
+            name: payload.reporterName !== undefined ? payload.reporterName : rep.name,
+            department: payload.department !== undefined ? payload.department : rep.department,
+            jobTitle: payload.jobTitle !== undefined ? payload.jobTitle : rep.jobTitle,
+            phone: payload.phone !== undefined ? payload.phone : rep.phone,
+            email: payload.email !== undefined ? payload.email : rep.email,
           };
         }
         if (selectedRecord.asset && typeof selectedRecord.asset === 'object') {
+          const ast = selectedRecord.asset as Record<string, any>;
           payload.asset = {
-            ...selectedRecord.asset,
-            assetId: payload.assetId !== undefined ? payload.assetId : selectedRecord.asset.assetId,
-            brand: payload.brand !== undefined ? payload.brand : selectedRecord.asset.brand,
-            model: payload.model !== undefined ? payload.model : selectedRecord.asset.model,
-            serialNumber: payload.sn !== undefined ? payload.sn : selectedRecord.asset.serialNumber,
-            purchaseDate: payload.purchaseDate !== undefined ? payload.purchaseDate : selectedRecord.asset.purchaseDate,
-            caretaker: payload.caretaker !== undefined ? payload.caretaker : selectedRecord.asset.caretaker,
-            receiveDate: payload.receiveDate !== undefined ? payload.receiveDate : selectedRecord.asset.receiveDate,
-            repairCount: payload.repairCount !== undefined ? payload.repairCount : selectedRecord.asset.repairCount,
+            ...ast,
+            assetId: payload.assetId !== undefined ? payload.assetId : ast.assetId,
+            brand: payload.brand !== undefined ? payload.brand : ast.brand,
+            model: payload.model !== undefined ? payload.model : ast.model,
+            serialNumber: payload.sn !== undefined ? payload.sn : ast.serialNumber,
+            purchaseDate: payload.purchaseDate !== undefined ? payload.purchaseDate : ast.purchaseDate,
+            caretaker: payload.caretaker !== undefined ? payload.caretaker : ast.caretaker,
+            receiveDate: payload.receiveDate !== undefined ? payload.receiveDate : ast.receiveDate,
+            repairCount: payload.repairCount !== undefined ? payload.repairCount : ast.repairCount,
           };
           if (payload.sn !== undefined) {
             payload.serialNumber = payload.sn;
           }
         }
         if (selectedRecord.issueDescription && typeof selectedRecord.issueDescription === 'object') {
+          const issue = selectedRecord.issueDescription as Record<string, any>;
           payload.issueDescription = {
-            ...selectedRecord.issueDescription,
-            detailedDescription: payload.detailedDescription !== undefined ? payload.detailedDescription : selectedRecord.issueDescription.detailedDescription,
+            ...issue,
+            detailedDescription: payload.detailedDescription !== undefined ? payload.detailedDescription : issue.detailedDescription,
           };
         }
       }
 
-      // เธเธฑเธเธ—เธถเธเธเธฒเธฃเนเธเนเนเธเนเธเธ Merge เน€เธเธทเนเธญเนเธกเนเนเธซเนเธเธฃเธฐเธ—เธเธเธดเธฅเธ”เนเธญเธทเนเธเน เธ—เธตเนเธญเธฒเธเธเธฐเธเนเธญเธเธญเธขเธนเน (เน€เธเนเธ เธฃเธนเธเธ เธฒเธ)
+      // บันทึกการแก้ไขแบบ Merge เพื่อไม่ให้กระทบฟิลด์อื่นๆ ที่อาจจะซ่อนอยู่ (เช่น รูปภาพ)
       await setDoc(docRef, payload, { merge: true });
       
-      // เธญเธฑเธเน€เธ”เธ•เธเนเธญเธกเธนเธฅเธ—เธตเนเนเธชเธ”เธเธเธ Modal เธ—เธฑเธเธ—เธต
+      // อัปเดตข้อมูลที่แสดงบน Modal ทันที
       setSelectedRecord({ ...selectedRecord, ...payload });
       setIsEditingRecord(false);
     } catch (error) {
@@ -1183,17 +1186,18 @@ const FormBackend = () => {
     setSortConfig({ key, direction });
   };
 
-  const handleDeleteEvalRecord = async (recordId: string) => {
-    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
-    try {
-      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, recordId));
-      setEvaluationRecords(prev => prev.filter(r => r.id !== recordId));
-    } catch (error) {
-      console.error('Error deleting evaluation:', error);
-      alert('Failed to delete evaluation.');
-    }
-  };
+  // const handleDeleteEvalRecord = async (recordId: string) => {
+  //   if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+  //   try {
+  //     await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, recordId));
+  //     setEvaluationRecords(prev => prev.filter(r => r.id !== recordId));
+  //   } catch (error) {
+  //     console.error('Error deleting evaluation:', error);
+  //     alert('Failed to delete evaluation.');
+  //   }
+  // };
 
+  /*
   const handleEditEvalClick = (record: EvaluationRecord) => {
     setSelectedEvalRecord(record);
     setEditEvalFormData({
@@ -1216,6 +1220,7 @@ const FormBackend = () => {
     });
     setIsEditingEvalRecord(true);
   };
+  */
 
   const handleSaveEvalRecord = async () => {
     if (!selectedEvalRecord) return;
@@ -1420,7 +1425,7 @@ const FormBackend = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                        <th className="px-2 py-1 font-bold whitespace-nowrap">Action</th>
+                        {/* <th className="px-2 py-1 font-bold whitespace-nowrap">Action</th> */}
                         <th className="px-2 py-1 font-bold whitespace-nowrap">#</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Project</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Evaluator</th>
@@ -1432,7 +1437,7 @@ const FormBackend = () => {
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Q5</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">วันที่ประเมิน</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap text-center">Action</th>
+                        {/* <th className="px-3 py-2 font-bold whitespace-nowrap text-center">Action</th> */}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1453,7 +1458,7 @@ const FormBackend = () => {
                         );
                         return (
                           <tr key={ev.id} className="hover:bg-amber-50/30 transition-colors">
-                            <td className="px-2 py-1 whitespace-nowrap">
+                            {/* <td className="px-2 py-1 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <button onClick={(e) => { if (dragState.isDragged) { e.preventDefault(); e.stopPropagation(); return; } handleEditEvalClick(ev); }} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
                                   <span className="material-symbols-outlined text-sm">edit</span>
@@ -1462,7 +1467,7 @@ const FormBackend = () => {
                                   <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>
                               </div>
-                            </td>
+                            </td> */}
                             <td className="px-2 py-1 text-slate-500 font-medium whitespace-nowrap">{idx + 1}</td>
                             <td className="px-2 py-1 whitespace-nowrap">
                               <div className="font-bold text-slate-800 text-sm leading-tight">{ev.projectName || ev.projectId}</div>
@@ -1498,7 +1503,7 @@ const FormBackend = () => {
                                 <span className="text-slate-400 text-xs italic">เนเธกเนเธกเธตเธเธงเธฒเธกเธเธดเธ”เน€เธซเนเธ</span>
                               )}
                             </td>
-                            <td className="px-3 py-1.5 text-center">
+                            {/* <td className="px-3 py-1.5 text-center">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEvaluation(ev.id); }}
                                 className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -1506,7 +1511,7 @@ const FormBackend = () => {
                               >
                                 <span className="material-symbols-outlined text-[18px]">delete</span>
                               </button>
-                            </td>
+                            </td> */}
                           </tr>
                         );
                       })}
@@ -1665,7 +1670,7 @@ const FormBackend = () => {
                         : 'bg-amber-100 text-amber-700';
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={(e) => { if (dragState.isDragged) return; setSelectedRecord(record); }}>
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => { if (dragState.isDragged) return; setSelectedRecord(record); }}>
                         <td className="px-3 py-1 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         {orderedColumns.map(col => {
                           if (hiddenColumns.has(col.id)) return null;

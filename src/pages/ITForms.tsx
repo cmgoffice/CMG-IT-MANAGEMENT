@@ -38,7 +38,7 @@ const ITForms = () => {
         });
         await batch.commit();
       } else {
-        const data = snap.docs.map(doc => ({ ...doc.data(), docId: doc.id }));
+        const data: any[] = snap.docs.map(doc => ({ ...doc.data(), docId: doc.id }));
         data.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         setFormsData(data);
       }
