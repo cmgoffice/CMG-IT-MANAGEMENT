@@ -15,10 +15,20 @@ const defaultForms = [
   { id: "FM-IT-007", title: "Remote Support", desc: "Request for remote assistance from IT support to resolve immediate technical issues.", icon: "settings_remote", path: "/forms/007", status: "Active" },
 ];
 
+type ITFormCard = {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  path: string;
+  status: string;
+  docId: string;
+};
+
 const ITForms = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { userProfile } = useAuth();
-  const [formsData, setFormsData] = useState<any[]>([]);
+  const [formsData, setFormsData] = useState<ITFormCard[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newForm, setNewForm] = useState({ id: '', title: '', desc: '', icon: 'article', path: '', status: 'Active' });
 
@@ -38,7 +48,7 @@ const ITForms = () => {
         });
         await batch.commit();
       } else {
-        const data = snap.docs.map(doc => ({ ...doc.data(), docId: doc.id }));
+        const data = snap.docs.map((doc): ITFormCard => ({ ...(doc.data() as Omit<ITFormCard, 'docId'>), docId: doc.id }));
         data.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         setFormsData(data);
       }

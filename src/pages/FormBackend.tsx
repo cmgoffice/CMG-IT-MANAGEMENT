@@ -34,6 +34,94 @@ interface PdfPreviewState {
   filename: string;
 }
 
+interface AssetHistoryEntry {
+  date: string;
+  action: string;
+  detail: string;
+}
+
+interface SerialHistoryAssetDetails {
+  assignedUser: string;
+  serialNumber: string;
+  category: string;
+  status: string;
+  make: string;
+  model: string;
+  processorType: string;
+  ram: string;
+  storageCapacity: string;
+  operatingSystem: string;
+  location: string;
+  condition: string;
+  healthScore: string;
+  warrantyExpiryDate: string;
+  remark: string;
+}
+
+interface SerialHistoryState {
+  serial: string;
+  assetId: string;
+  assetName: string;
+  assetDetails: SerialHistoryAssetDetails | null;
+  history: AssetHistoryEntry[];
+  error: string | null;
+}
+
+interface AssetHistoryLookupRecord {
+  id: string;
+  requestedAssetId?: string;
+  serial?: string;
+  name?: string;
+  user?: string | null;
+  status?: string;
+  category?: string;
+  make?: string;
+  model?: string;
+  processorType?: string;
+  ram?: string;
+  storageCapacity?: string;
+  operatingSystem?: string;
+  location?: string;
+  condition?: string;
+  healthScore?: number;
+  warrantyExpiryDate?: string;
+  remark?: string;
+  history?: Array<{
+    date?: string;
+    action?: string;
+    detail?: string;
+  }>;
+}
+
+function normalizeFm003Serial(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function deriveFm003DisplayRecords(records: FormRecord[]): FormRecord[] {
+  return records.map((record) => {
+    const currentSerial = String(record.changeSn || record.serialNumber || '').trim();
+    const previousSerial = String(record.previousChangeSn || '').trim();
+
+    if (!currentSerial || !previousSerial) {
+      return record;
+    }
+
+    const isReferencedByNewerRecord = records.some((candidate) => {
+      if (candidate.id === record.id) return false;
+
+      const candidatePreviousSerial = normalizeFm003Serial(candidate.previousChangeSn);
+      const candidateCreatedAt = candidate.createdAt instanceof Timestamp ? candidate.createdAt.toMillis() : 0;
+      const recordCreatedAt = record.createdAt instanceof Timestamp ? record.createdAt.toMillis() : 0;
+
+      return candidatePreviousSerial === normalizeFm003Serial(currentSerial) && candidateCreatedAt >= recordCreatedAt;
+    });
+
+    return isReferencedByNewerRecord
+      ? { ...record, displayChangeSn: previousSerial }
+      : record;
+  });
+}
+
 const formTabs = [
   { id: '001', label: 'FM-IT-001', collection: 'repairRequests' },
   { id: '002', label: 'FM-IT-002', collection: 'appointments' },
@@ -240,6 +328,72 @@ function getAttachments(data: FormRecord): string[] {
   return [];
 }
 
+function extractYearFromDocNo(docNo: unknown): string | null {
+  if (typeof docNo !== 'string') return null;
+  const normalized = docNo.trim();
+  if (!normalized) return null;
+
+  const exactMatch = normalized.match(/-(\d{4})\d{3}$/);
+  if (exactMatch) return exactMatch[1];
+
+  const fallbackMatch = normalized.match(/(\d{4})/);
+  return fallbackMatch ? fallbackMatch[1] : null;
+}
+
+function extractYearFromCreatedAt(createdAt: unknown): string | null {
+  if (!createdAt) return null;
+
+  if (createdAt instanceof Timestamp) {
+    return String(createdAt.toDate().getFullYear());
+  }
+
+  if (typeof createdAt === 'string' || typeof createdAt === 'number' || createdAt instanceof Date) {
+    const date = new Date(createdAt);
+    if (!Number.isNaN(date.getTime())) {
+      return String(date.getFullYear());
+    }
+  }
+
+  return null;
+}
+
+function extractYearFromDateValue(value: unknown): string | null {
+  if (!value || typeof value === 'boolean') return null;
+
+  if (value instanceof Timestamp) {
+    return String(value.toDate().getFullYear());
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) {
+    return String(parsed.getFullYear());
+  }
+
+  const fallbackMatch = normalized.match(/\b(20\d{2}|19\d{2})\b/);
+  return fallbackMatch ? fallbackMatch[1] : null;
+}
+
+function getRecordYear(record: FormRecord): string | null {
+  const yearCandidates = [
+    extractYearFromDocNo(record.wrNumber),
+    extractYearFromDocNo(record.docNo),
+    extractYearFromDocNo(record.id),
+    extractYearFromDateValue(record.requestDate),
+    extractYearFromDateValue(record.appointmentDate),
+    extractYearFromDateValue(record.dateOfUse),
+    extractYearFromDateValue(record.returnDate),
+    extractYearFromDateValue(record.itStartDate),
+    extractYearFromDateValue(record.it_startDate),
+    extractYearFromDateValue(record.submittedAt),
+    extractYearFromCreatedAt(record.createdAt),
+  ].filter((year): year is string => Boolean(year));
+
+  return yearCandidates[0] || null;
+}
+
 function getEquipmentCategoryText(eq: unknown): string {
   if (!eq) return '-';
   if (typeof eq === 'string') return eq;
@@ -329,7 +483,7 @@ function renderCellContent(colId: string, record: any, activeTab: string): strin
       return (activeTab === '003' || activeTab === '004') && record.eqQuantity ? finalEqStr + ` (Qty: ${record.eqQuantity})` : finalEqStr;
     }
     case 'changeAssetId': return String(record.changeAssetId || record.assetId || '-');
-    case 'changeSn': return String(record.changeSn || record.serialNumber || '-');
+    case 'changeSn': return String(record.displayChangeSn || record.changeSn || record.serialNumber || '-');
     case 'changePrevUser': return String(record.changePrevUser || record.previousUser || '-');
     case 'returnerName': return String(record.returnerName || record.applicantName || '-');
     case 'returnDate': return String(record.returnDate || '-');
@@ -487,6 +641,7 @@ const FormBackend = () => {
   const [records, setRecords] = useState<FormRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [yearFilter, setYearFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
@@ -503,8 +658,11 @@ const FormBackend = () => {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [previewPdf, setPreviewPdf] = useState<PdfPreviewState | null>(null);
+  const [serialHistoryState, setSerialHistoryState] = useState<SerialHistoryState | null>(null);
+  const [isLoadingSerialHistory, setIsLoadingSerialHistory] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FormRecord | null>(null);
   const [isEditingRecord, setIsEditingRecord] = useState(false);
   const [editFormData, setEditFormData] = useState<Record<string, any>>({});
@@ -640,6 +798,7 @@ const FormBackend = () => {
     const activeForm = formTabs.find((t) => t.id === activeTab);
     if (!activeForm) return;
     setStatusFilter('pending'); // Reset filter when changing tabs
+    setYearFilter('All');
     setCurrentPage(1); // Reset page when changing tabs
     setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
     setSortConfig(null); // Reset sort
@@ -676,17 +835,39 @@ const FormBackend = () => {
     return () => unsubscribe();
   }, [activeTab]);
 
+  const activeLabel = formTabs.find((t) => t.id === activeTab)?.label || '';
+  const recordsForDisplay = activeTab === '003' ? deriveFm003DisplayRecords(records) : records;
+  const availableYears = Array.from(
+    new Set(
+      recordsForDisplay
+        .map((record) => getRecordYear(record))
+        .filter((year): year is string => Boolean(year))
+    )
+  ).sort((a, b) => Number(b) - Number(a));
+  const shouldFilterByYear = activeTab !== 'evaluation' && availableYears.length > 0;
+
+  useEffect(() => {
+    if (activeTab === 'evaluation') {
+      setYearFilter('All');
+      return;
+    }
+
+    if (yearFilter !== 'All' && !availableYears.includes(yearFilter)) {
+      setYearFilter('All');
+    }
+  }, [activeTab, availableYears, yearFilter]);
+
   if (!isMasterAdmin) {
     return <Navigate to="/" replace />;
   }
 
-  const activeLabel = formTabs.find((t) => t.id === activeTab)?.label || '';
-
   // Filter records based on selected status
-  const filteredRecords = records.filter(record => {
-    if (statusFilter === 'All') return true;
+  const filteredRecords = recordsForDisplay.filter(record => {
+    const recordYear = getRecordYear(record);
+    const matchYear = !shouldFilterByYear || yearFilter === 'All' || recordYear === yearFilter;
+    if (statusFilter === 'All') return matchYear;
     const currentStatus = (record.status as string)?.toLowerCase() || 'pending';
-    return currentStatus === statusFilter.toLowerCase();
+    return currentStatus === statusFilter.toLowerCase() && matchYear;
   }).sort((a, b) => {
     if (!sortConfig) return 0;
     const { key, direction } = sortConfig;
@@ -736,7 +917,7 @@ const FormBackend = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, yearFilter]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -858,6 +1039,10 @@ const FormBackend = () => {
 
   const updatePreview = (headers: string[], data: string[][], mapping: Record<string, string>) => {
     const parsedRecords: any[] = [];
+    const warnings: string[] = [];
+    const existingIds = new Set(records.map((r) => String(r.id).toLowerCase()));
+    const usedIds = new Set<string>();
+
     data.forEach((values, index) => {
       const record: any = {};
       let hasData = false;
@@ -872,8 +1057,24 @@ const FormBackend = () => {
         }
       });
       if (hasData) {
-        if (!record.id) record.id = `IMP-${Date.now()}-${index}`;
-        
+        const originalId = String(record.id || '').trim();
+        const defaultId = originalId || `IMP-${Date.now()}-${index}`;
+        let candidateId = defaultId;
+        let suffix = 1;
+
+        while (existingIds.has(candidateId.toLowerCase()) || usedIds.has(candidateId.toLowerCase())) {
+          candidateId = `${defaultId}-${suffix}`;
+          suffix += 1;
+        }
+
+        if (candidateId !== defaultId) {
+          record.originalImportedId = originalId || record.originalImportedId || '';
+          warnings.push(`Duplicate record ID "${originalId || defaultId}" detected. Saved as new record ID "${candidateId}".`);
+        }
+
+        record.id = candidateId;
+        usedIds.add(candidateId.toLowerCase());
+
         if (importTargetTab === 'evaluation') {
           record.ratings = {
             q1: Number(record.q1) || 0,
@@ -892,11 +1093,12 @@ const FormBackend = () => {
           if (!record.createdAt) record.createdAt = Timestamp.now();
           if (!record.status) record.status = 'pending';
         }
-        
+
         parsedRecords.push(record);
       }
     });
     setImportPreview(parsedRecords);
+    setImportWarnings(warnings);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -999,6 +1201,7 @@ const FormBackend = () => {
       setImportFile(null);
       setImportPreview([]);
       setImportErrors([]);
+      setImportWarnings([]);
       setCsvHeaders([]);
       setCsvData([]);
       setColumnMapping({});
@@ -1127,35 +1330,38 @@ const FormBackend = () => {
       // Re-map flat data back to nested objects specifically for FM-IT-001
       if (activeTab === '001') {
         if (selectedRecord.reporter && typeof selectedRecord.reporter === 'object') {
+          const reporter = selectedRecord.reporter as Record<string, unknown>;
           payload.reporter = {
-            ...selectedRecord.reporter,
-            name: payload.reporterName !== undefined ? payload.reporterName : selectedRecord.reporter.name,
-            department: payload.department !== undefined ? payload.department : selectedRecord.reporter.department,
-            jobTitle: payload.jobTitle !== undefined ? payload.jobTitle : selectedRecord.reporter.jobTitle,
-            phone: payload.phone !== undefined ? payload.phone : selectedRecord.reporter.phone,
-            email: payload.email !== undefined ? payload.email : selectedRecord.reporter.email,
+            ...reporter,
+            name: payload.reporterName !== undefined ? payload.reporterName : reporter.name,
+            department: payload.department !== undefined ? payload.department : reporter.department,
+            jobTitle: payload.jobTitle !== undefined ? payload.jobTitle : reporter.jobTitle,
+            phone: payload.phone !== undefined ? payload.phone : reporter.phone,
+            email: payload.email !== undefined ? payload.email : reporter.email,
           };
         }
         if (selectedRecord.asset && typeof selectedRecord.asset === 'object') {
+          const asset = selectedRecord.asset as Record<string, unknown>;
           payload.asset = {
-            ...selectedRecord.asset,
-            assetId: payload.assetId !== undefined ? payload.assetId : selectedRecord.asset.assetId,
-            brand: payload.brand !== undefined ? payload.brand : selectedRecord.asset.brand,
-            model: payload.model !== undefined ? payload.model : selectedRecord.asset.model,
-            serialNumber: payload.sn !== undefined ? payload.sn : selectedRecord.asset.serialNumber,
-            purchaseDate: payload.purchaseDate !== undefined ? payload.purchaseDate : selectedRecord.asset.purchaseDate,
-            caretaker: payload.caretaker !== undefined ? payload.caretaker : selectedRecord.asset.caretaker,
-            receiveDate: payload.receiveDate !== undefined ? payload.receiveDate : selectedRecord.asset.receiveDate,
-            repairCount: payload.repairCount !== undefined ? payload.repairCount : selectedRecord.asset.repairCount,
+            ...asset,
+            assetId: payload.assetId !== undefined ? payload.assetId : asset.assetId,
+            brand: payload.brand !== undefined ? payload.brand : asset.brand,
+            model: payload.model !== undefined ? payload.model : asset.model,
+            serialNumber: payload.sn !== undefined ? payload.sn : asset.serialNumber,
+            purchaseDate: payload.purchaseDate !== undefined ? payload.purchaseDate : asset.purchaseDate,
+            caretaker: payload.caretaker !== undefined ? payload.caretaker : asset.caretaker,
+            receiveDate: payload.receiveDate !== undefined ? payload.receiveDate : asset.receiveDate,
+            repairCount: payload.repairCount !== undefined ? payload.repairCount : asset.repairCount,
           };
           if (payload.sn !== undefined) {
             payload.serialNumber = payload.sn;
           }
         }
         if (selectedRecord.issueDescription && typeof selectedRecord.issueDescription === 'object') {
+          const issueDescription = selectedRecord.issueDescription as Record<string, unknown>;
           payload.issueDescription = {
-            ...selectedRecord.issueDescription,
-            detailedDescription: payload.detailedDescription !== undefined ? payload.detailedDescription : selectedRecord.issueDescription.detailedDescription,
+            ...issueDescription,
+            detailedDescription: payload.detailedDescription !== undefined ? payload.detailedDescription : issueDescription.detailedDescription,
           };
         }
       }
@@ -1191,6 +1397,104 @@ const FormBackend = () => {
     } catch (error) {
       console.error('Error deleting evaluation:', error);
       alert('Failed to delete evaluation.');
+    }
+  };
+
+  const handleOpenAssetHistory = async (record: FormRecord, lookupValue?: string) => {
+    const normalizedLookupValue = String(lookupValue || '').trim();
+    const fallbackValue = String(renderCellContent('changeSn', record, '003')).trim();
+    const displayValue = normalizedLookupValue || fallbackValue;
+    const normalizedAssetId = String(
+      record.changeAssetId || record.assetId || record.cancelUsageAssetId || record.cancelAssetId || '',
+    ).trim().toLowerCase();
+    if (!displayValue) return;
+
+    setIsLoadingSerialHistory(true);
+    setSerialHistoryState({
+      serial: displayValue,
+      assetId: '',
+      assetName: '',
+      assetDetails: null,
+      history: [],
+      error: null,
+    });
+
+    try {
+      const assetSnapshot = await getDocs(collection(db, `${APP_NAME}/root/assets`));
+      const matchedAsset = assetSnapshot.docs
+        .map((assetDoc): AssetHistoryLookupRecord => ({ id: assetDoc.id, ...(assetDoc.data() as Omit<AssetHistoryLookupRecord, 'id'>) }))
+        .find((asset) => {
+          const assetId = String(asset.id || '').trim().toLowerCase();
+          const requestedAssetId = String(asset.requestedAssetId || '').trim().toLowerCase();
+          const assetSerial = String(asset.serial || '').trim().toLowerCase();
+          const normalizedClickedValue = displayValue.toLowerCase();
+
+          return (
+            (normalizedAssetId !== '' && (assetId === normalizedAssetId || requestedAssetId === normalizedAssetId)) ||
+            assetId === normalizedClickedValue ||
+            requestedAssetId === normalizedClickedValue ||
+            assetSerial === normalizedClickedValue
+          );
+        });
+
+      if (!matchedAsset) {
+        setSerialHistoryState({
+          serial: displayValue,
+          assetId: '',
+          assetName: '',
+          assetDetails: null,
+          history: [],
+          error: 'No asset history found for this row.',
+        });
+        return;
+      }
+
+      const history = Array.isArray(matchedAsset.history)
+        ? matchedAsset.history
+            .filter((entry): entry is NonNullable<AssetHistoryLookupRecord['history']>[number] => typeof entry === 'object' && entry !== null)
+            .map((entry) => ({
+              date: typeof entry.date === 'string' ? entry.date : '-',
+              action: typeof entry.action === 'string' ? entry.action : 'History',
+              detail: typeof entry.detail === 'string' ? entry.detail : '',
+            }))
+        : [];
+
+      setSerialHistoryState({
+        serial: displayValue,
+        assetId: matchedAsset.id,
+        assetName: typeof matchedAsset.name === 'string' ? matchedAsset.name : '',
+        assetDetails: {
+          assignedUser: typeof matchedAsset.user === 'string' && matchedAsset.user.trim() !== '' ? matchedAsset.user : 'Unassigned',
+          serialNumber: typeof matchedAsset.serial === 'string' ? matchedAsset.serial : displayValue,
+          category: typeof matchedAsset.category === 'string' ? matchedAsset.category : '-',
+          status: typeof matchedAsset.status === 'string' ? matchedAsset.status : '-',
+          make: typeof matchedAsset.make === 'string' ? matchedAsset.make : '-',
+          model: typeof matchedAsset.model === 'string' ? matchedAsset.model : '-',
+          processorType: typeof matchedAsset.processorType === 'string' ? matchedAsset.processorType : '-',
+          ram: typeof matchedAsset.ram === 'string' && matchedAsset.ram.trim() !== '' ? matchedAsset.ram : '-',
+          storageCapacity: typeof matchedAsset.storageCapacity === 'string' && matchedAsset.storageCapacity.trim() !== '' ? matchedAsset.storageCapacity : '-',
+          operatingSystem: typeof matchedAsset.operatingSystem === 'string' && matchedAsset.operatingSystem.trim() !== '' ? matchedAsset.operatingSystem : '-',
+          location: typeof matchedAsset.location === 'string' && matchedAsset.location.trim() !== '' ? matchedAsset.location : '-',
+          condition: typeof matchedAsset.condition === 'string' && matchedAsset.condition.trim() !== '' ? matchedAsset.condition : '-',
+          healthScore: typeof matchedAsset.healthScore === 'number' ? String(matchedAsset.healthScore) : '-',
+          warrantyExpiryDate: typeof matchedAsset.warrantyExpiryDate === 'string' && matchedAsset.warrantyExpiryDate.trim() !== '' ? matchedAsset.warrantyExpiryDate : '-',
+          remark: typeof matchedAsset.remark === 'string' && matchedAsset.remark.trim() !== '' ? matchedAsset.remark : '-',
+        },
+        history,
+        error: null,
+      });
+    } catch (error) {
+      console.error('Failed to load serial history:', error);
+      setSerialHistoryState({
+        serial: displayValue,
+        assetId: '',
+        assetName: '',
+        assetDetails: null,
+        history: [],
+        error: 'Failed to load asset history.',
+      });
+    } finally {
+      setIsLoadingSerialHistory(false);
     }
   };
 
@@ -1526,10 +1830,26 @@ const FormBackend = () => {
               <span className="text-sm text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">{filteredRecords.length} record(s)</span>
             </div>
             <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-bold text-slate-500">Year:</label>
+                <select
+                  value={yearFilter}
+                  onChange={(e) => setYearFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#27619D] shadow-sm cursor-pointer"
+                >
+                  <option value="All">All Years</option>
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Column Visibility Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button 
-                  onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                  onClick={() => {
+                    setShowColumnDropdown(!showColumnDropdown);
+                  }}
                   className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
                 >
                   <span className="material-symbols-outlined text-sm">view_column</span>
@@ -1665,7 +1985,7 @@ const FormBackend = () => {
                         : 'bg-amber-100 text-amber-700';
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={(e) => { if (dragState.isDragged) return; setSelectedRecord(record); }}>
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => { if (dragState.isDragged) return; setSelectedRecord(record); }}>
                         <td className="px-3 py-1 text-slate-600 font-medium whitespace-nowrap">{index + 1}</td>
                         {orderedColumns.map(col => {
                           if (hiddenColumns.has(col.id)) return null;
@@ -1725,6 +2045,28 @@ const FormBackend = () => {
                                 <span className="material-symbols-outlined text-base">delete</span>
                               </button>
                             );
+                          } else if (
+                            (activeTab === '003' && col.id === 'changeSn') ||
+                            (activeTab === '004' && (col.id === 'assetId' || col.id === 'cancelUsageAssetId'))
+                          ) {
+                            isComponent = true;
+                            const serialValue = String(renderCellContent(col.id, record, activeTab));
+                            cellContent = serialValue !== '-'
+                              ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (dragState.isDragged) return;
+                                    void handleOpenAssetHistory(record, serialValue);
+                                  }}
+                                  className="font-mono text-base font-semibold text-[#27619d] hover:text-[#1e4d7a] hover:underline underline-offset-2"
+                                  title="View asset history"
+                                >
+                                  {serialValue}
+                                </button>
+                              )
+                              : <span className="text-slate-400 text-sm">-</span>;
                           } else {
                             cellContent = renderCellContent(col.id, record, activeTab);
                           }
@@ -1827,6 +2169,185 @@ const FormBackend = () => {
                   Download
                 </a>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {serialHistoryState && createPortal(
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99998 }}>
+          <div className="absolute inset-0 bg-[#2c3437]/35 backdrop-blur-sm" onClick={() => setSerialHistoryState(null)} />
+          <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+              <div>
+                <h2 className="text-2xl font-extrabold text-slate-800">
+                  {serialHistoryState.assetId ? `Edit ${serialHistoryState.assetId}` : 'Serial History'}
+                </h2>
+                {(serialHistoryState.assetName || serialHistoryState.serial) && (
+                  <p className="mt-2 text-sm text-slate-500">
+                    {serialHistoryState.assetName || serialHistoryState.serial}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSerialHistoryState(null)}
+                className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100"
+                aria-label="Close serial history"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="max-h-[78vh] overflow-y-auto px-6 py-6">
+              {isLoadingSerialHistory ? (
+                <div className="py-10 text-center text-slate-500">
+                  <span className="material-symbols-outlined animate-spin text-3xl">progress_activity</span>
+                  <p className="mt-3 text-sm font-medium">Loading history...</p>
+                </div>
+              ) : serialHistoryState.error ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900">
+                  {serialHistoryState.error}
+                </div>
+              ) : serialHistoryState.history.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                  No history found for this serial number.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {serialHistoryState.assetDetails && (
+                    <>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">1</div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">Basic Information</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Asset ID</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetId || '-'}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Assigned User</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.assignedUser}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Serial Number</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.serialNumber}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">2</div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">Category & Classification</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Category</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.category}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Status</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.status}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">3</div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">Hardware Specifications</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Make/Manufacturer</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.make}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Model</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.model}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Processor Type and Speed</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.processorType}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">RAM</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.ram}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Storage Capacity</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.storageCapacity}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Operating System</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.operatingSystem}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">4</div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">Location & Condition</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Location</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.location}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Condition</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.condition}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Health Score</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.healthScore}</div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Warranty Expiry Date</label>
+                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.warrantyExpiryDate}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">5</div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">Additional Information</h3>
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Remark</label>
+                          <div className="min-h-[96px] rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">{serialHistoryState.assetDetails.remark}</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {serialHistoryState.history.length > 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-sm">
+                      <div className="mb-5 flex items-center gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#27619d] text-xs font-bold text-white">6</div>
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-[#27619d]">History</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {serialHistoryState.history.map((event, index) => (
+                          <div key={`${event.date}-${event.action}-${index}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-xs font-bold uppercase tracking-wide text-[#27619d]">{event.action}</span>
+                              <span className="text-xs text-slate-500">{event.date}</span>
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-700">{event.detail || '-'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>,
@@ -2011,6 +2532,22 @@ const FormBackend = () => {
               </div>
             )}
 
+            {importWarnings.length > 0 && (
+              <div className="mb-6 bg-yellow-50 border-yellow-200 border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-yellow-600 text-xl">warning</span>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-yellow-900 mb-2 text-sm">Import Warnings:</h3>
+                    <ul className="text-xs text-yellow-900 space-y-1">
+                      {importWarnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {importPreview.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-bold text-slate-800 mb-3 text-sm">Preview ({importPreview.length} records)</h3>
@@ -2055,6 +2592,7 @@ const FormBackend = () => {
                   setImportFile(null);
                   setImportPreview([]);
                   setImportErrors([]);
+                  setImportWarnings([]);
                   setCsvHeaders([]);
                   setCsvData([]);
                   setColumnMapping({});
@@ -2134,7 +2672,7 @@ const FormBackend = () => {
               </div>
       
               {tabColumnsConfig[activeTab]?.map(col => {
-                const isLongText = ['detailedDescription', 'jobDetails', 'reason', 'cancelUsageReason', 'dataAccessDetails', 'requirements', 'detail'].includes(col.id);
+                const isLongText = ['detailedDescription', 'jobDetails', 'reason', 'cancelUsageReason', 'dataAccessDetails', 'requirements', 'detail', 'matchingNote'].includes(col.id);
                 return (
                   <div key={col.id} className={`${isLongText ? 'col-span-full' : 'col-span-full sm:col-span-1'}`}>
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{col.label}</label>

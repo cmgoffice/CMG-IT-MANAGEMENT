@@ -458,6 +458,7 @@ const Projects = () => {
                 <label className="text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Description</label>
                 <textarea
                   placeholder="Project description..."
+
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}

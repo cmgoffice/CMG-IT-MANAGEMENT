@@ -1,9 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { generateDocNo } from '../../lib/db';
 // import { useNavigate } from 'react-router-dom';
+
+const normalizeText = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+
+const getRequestSerialNumber = (record: Record<string, unknown>) => {
+  const candidates = [record.changeSn, record.serialNumber];
+  const matchedValue = candidates.find((value) => typeof value === 'string' && value.trim() !== '');
+  return typeof matchedValue === 'string' ? matchedValue.trim() : '';
+};
+
+const getRecordCreatedAt = (record: Record<string, unknown>) => {
+  const createdAt = record.createdAt;
+  if (createdAt instanceof Timestamp) return createdAt.toMillis();
+  if (typeof createdAt === 'string') {
+    const parsed = new Date(createdAt).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+type AssetRequestHistoryRecord = Record<string, unknown> & {
+  id: string;
+  applicantName?: string;
+  docNo?: string;
+  wrNumber?: string;
+};
 
 const AssetRequest = () => {
   const today = new Date().toISOString().split('T')[0];
@@ -51,13 +76,40 @@ const AssetRequest = () => {
       const reporterDepartment = typeof data.department === 'string' ? data.department : userProfile.department || '';
       const reporterJobTitle = typeof data.jobTitle === 'string' ? data.jobTitle : userProfile.position || '';
       const reporterPhone = typeof data.phone === 'string' ? data.phone : '';
+      const submittedApplicantName = typeof data.applicantName === 'string' ? data.applicantName.trim() : '';
+      const submittedSerial = typeof data.serialNumber === 'string' ? data.serialNumber.trim() : '';
+      let previousApplicantSerial = '';
+      let previousApplicantDocNo = '';
 
-      // Save to specific form collection
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetRequests'), {
+      if (submittedApplicantName && submittedSerial) {
+        try {
+          const previousRequestSnapshot = await getDocs(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetRequests'));
+          const previousApplicantRecord = previousRequestSnapshot.docs
+            .map((doc): AssetRequestHistoryRecord => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
+            .filter((record) => normalizeText(record.applicantName) === normalizeText(submittedApplicantName))
+            .filter((record) => {
+              const previousSerial = getRequestSerialNumber(record);
+              return previousSerial !== '' && normalizeText(previousSerial) !== normalizeText(submittedSerial);
+            })
+            .sort((a, b) => getRecordCreatedAt(b) - getRecordCreatedAt(a))[0];
+
+          if (previousApplicantRecord) {
+            previousApplicantSerial = getRequestSerialNumber(previousApplicantRecord);
+            previousApplicantDocNo = String(previousApplicantRecord.docNo || previousApplicantRecord.wrNumber || previousApplicantRecord.id || '').trim();
+          }
+        } catch (historyError) {
+          console.warn('Unable to read previous asset request history. Submission will continue without previous S/N reference.', historyError);
+        }
+      }
+
+      const requestPayload: Record<string, unknown> = {
         ...data,
         docNo: wrNumber,
         wrNumber,
         requestDate,
+        changeSn: submittedSerial || null,
+        previousChangeSn: previousApplicantSerial || null,
+        previousRequestDocNo: previousApplicantDocNo || null,
         reporter: {
           name: reporterName,
           email: reporterEmail,
@@ -67,7 +119,10 @@ const AssetRequest = () => {
         },
         status: 'pending',
         createdAt: Timestamp.now()
-      });
+      };
+
+      // Save to specific form collection
+      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetRequests'), requestPayload);
 
       // Save to Logs
       await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
@@ -39,6 +39,10 @@ type AssetItem = {
   remark: string;
   healthScore?: number;
   history: AssetHistory[];
+};
+
+type AssetPayload = Omit<AssetItem, 'id'> & {
+  requestedAssetId?: string;
 };
 
 type AssetFormState = {
@@ -195,6 +199,8 @@ const Asset = () => {
   const pageSize = 20;
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledHistoryKeyRef = useRef('');
 
   const isMasterAdmin = userProfile && (
     Array.isArray(userProfile.role)
@@ -258,6 +264,28 @@ const Asset = () => {
   }, []);
 
   useEffect(() => {
+    const serial = searchParams.get('serial')?.trim();
+    const shouldOpenHistory = searchParams.get('history') === '1';
+    const historyKey = shouldOpenHistory && serial ? `${serial.toLowerCase()}::history` : '';
+
+    if (!historyKey || handledHistoryKeyRef.current === historyKey || assets.length === 0) {
+      return;
+    }
+
+    const matchedAsset = assets.find((asset) => asset.serial.trim().toLowerCase() === serial!.toLowerCase());
+    if (!matchedAsset) {
+      return;
+    }
+
+    handledHistoryKeyRef.current = historyKey;
+    setSearch(serial!);
+    setCategory('All Assets');
+    setStatus('All Statuses');
+    setCurrentPage(1);
+    openHistoryModal(matchedAsset);
+  }, [assets, searchParams]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [search, category, status, assets.length]);
 
@@ -316,9 +344,33 @@ const Asset = () => {
     setShowHistoryModal(true);
   };
 
+  const closeHistoryModal = () => {
+    setShowHistoryModal(false);
+    const serial = searchParams.get('serial');
+    const shouldOpenHistory = searchParams.get('history') === '1';
+    if (serial || shouldOpenHistory) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('serial');
+      nextParams.delete('history');
+      setSearchParams(nextParams);
+    }
+  };
+
   const handleFormChange = (field: keyof AssetFormState, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const generateUniqueAssetId = (baseId: string) => {
+    const trimmedBase = baseId.trim();
+    const existingIds = new Set(assets.map((a) => a.id.toLowerCase()));
+    let candidate = trimmedBase;
+    let suffix = 1;
+    while (existingIds.has(candidate.toLowerCase())) {
+      candidate = `${trimmedBase}-${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
   };
 
   const validateForm = () => {
@@ -328,7 +380,8 @@ const Asset = () => {
     if (!formData.status) nextErrors.status = 'Status is required.';
     if (!formData.category) nextErrors.category = 'Category is required.';
     if (
-      assets.some((a) => a.id.toLowerCase() === formData.id.trim().toLowerCase() && (modalMode === 'add' || a.id !== selectedAsset?.id))
+      modalMode === 'edit' &&
+      assets.some((a) => a.id.toLowerCase() === formData.id.trim().toLowerCase() && a.id !== selectedAsset?.id)
     ) {
       nextErrors.id = 'Asset ID already exists.';
     }
@@ -343,8 +396,11 @@ const Asset = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSaveAsset = () => {
-    if (!validateForm()) return;
+  const handleSaveAsset = async () => {
+    if (!validateForm()) {
+      alert('Please fix highlighted errors before submitting.');
+      return;
+    }
 
     const iconMeta = categoryIconMap[formData.category] || { icon: 'devices', iconBg: 'bg-[#dce4e8]/50', iconColor: 'text-[#446378]' };
     const normalizedUser = formData.user.trim() || null;
@@ -357,8 +413,10 @@ const Asset = () => {
     const autoSpec = specParts.length > 0 ? specParts.join(' / ') : 'No specification';
 
     const assetId = formData.id.trim();
+    const finalAssetId = modalMode === 'add' ? generateUniqueAssetId(assetId) : assetId;
+    const duplicateAssetIdResolved = modalMode === 'add' && finalAssetId !== assetId;
     const matchedUser = normalizedUser ? usersList.find((u) => u.name === normalizedUser) : undefined;
-    console.log('Saving asset - matchedUser:', matchedUser, 'userAvatar:', matchedUser?.photoURL ?? null);
+    console.log('Saving asset - matchedUser:', matchedUser, 'userAvatar:', matchedUser?.photoURL ?? null, 'finalAssetId:', finalAssetId);
 
     const previousUser = modalMode === 'edit' ? (selectedAsset?.user ?? null) : null;
     const userChanged = previousUser !== normalizedUser;
@@ -377,7 +435,7 @@ const Asset = () => {
       });
     }
 
-    const payload: Omit<AssetItem, 'id'> = {
+    const payload: AssetPayload = {
       name: autoName,
       spec: autoSpec,
       serial: formData.serial.trim(),
@@ -402,7 +460,13 @@ const Asset = () => {
       history:
         modalMode === 'add'
           ? [
-              { date: new Date().toLocaleString('sv-SE').replace('T', ' '), action: 'Registered', detail: 'Asset created from Asset page.' },
+              {
+                date: new Date().toLocaleString('sv-SE').replace('T', ' '),
+                action: 'Registered',
+                detail: duplicateAssetIdResolved
+                  ? `Asset ID "${assetId}" already existed. Assigned new Asset ID "${finalAssetId}".`
+                  : 'Asset created from Asset page.',
+              },
               ...assignmentHistory,
             ]
           : [
@@ -410,13 +474,19 @@ const Asset = () => {
               ...assignmentHistory,
               ...(selectedAsset?.history ?? []),
             ],
+      ...(duplicateAssetIdResolved ? { requestedAssetId: assetId } : {}),
     };
 
-    void setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', assetId), payload).then(async () => {
+    try {
+      await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', finalAssetId), payload);
       setShowFormModal(false);
       setSelectedAsset(null);
       await loadAssets();
-    });
+    } catch (err) {
+      console.error('Error saving asset:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Failed to save asset: ${message}`);
+    }
   };
 
   const handleDeleteAsset = () => {
@@ -1341,11 +1411,11 @@ const Asset = () => {
 
       {showHistoryModal && selectedAsset && createPortal(
         <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
-          <div className="absolute inset-0 bg-[#2c3437]/20 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
+          <div className="absolute inset-0 bg-[#2c3437]/20 backdrop-blur-sm" onClick={closeHistoryModal} />
           <div className="relative bg-white/90 rounded-2xl border border-white/60 w-full max-w-2xl p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-extrabold text-[#2c3437] font-display">History - {selectedAsset.id}</h2>
-              <button onClick={() => setShowHistoryModal(false)} className="p-2 rounded-full hover:bg-[#eaeff2] transition-colors"><span className="material-symbols-outlined text-[#596064]">close</span></button>
+              <button onClick={closeHistoryModal} className="p-2 rounded-full hover:bg-[#eaeff2] transition-colors"><span className="material-symbols-outlined text-[#596064]">close</span></button>
             </div>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
               {selectedAsset.history.length === 0 && <p className="text-sm text-[#596064] font-body">No history found.</p>}
