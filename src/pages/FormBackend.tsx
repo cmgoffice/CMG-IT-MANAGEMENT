@@ -1252,16 +1252,16 @@ const FormBackend = () => {
     }
   };
 
-  const handleDeleteEvaluation = async (evalId: string) => {
-    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
-    try {
-      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, evalId));
-      setEvaluationRecords(prev => prev.filter(r => r.id !== evalId));
-    } catch (error) {
-      console.error('Error deleting evaluation:', error);
-      alert('Failed to delete evaluation.');
-    }
-  };
+  // const handleDeleteEvaluation = async (evalId: string) => {
+  //   if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+  //   try {
+  //     await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, evalId));
+  //     setEvaluationRecords(prev => prev.filter(r => r.id !== evalId));
+  //   } catch (error) {
+  //     console.error('Error deleting evaluation:', error);
+  //     alert('Failed to delete evaluation.');
+  //   }
+  // };
 
   const handleDeleteAll = async () => {
     if (filteredRecords.length === 0) return;
@@ -1366,10 +1366,10 @@ const FormBackend = () => {
         }
       }
 
-      // เธเธฑเธเธ—เธถเธเธเธฒเธฃเนเธเนเนเธเนเธเธ Merge เน€เธเธทเนเธญเนเธกเนเนเธซเนเธเธฃเธฐเธ—เธเธเธดเธฅเธ”เนเธญเธทเนเธเน เธ—เธตเนเธญเธฒเธเธเธฐเธเนเธญเธเธญเธขเธนเน (เน€เธเนเธ เธฃเธนเธเธ เธฒเธ)
+      // บันทึกการแก้ไขแบบ Merge เพื่อไม่ให้กระทบฟิลด์อื่นๆ ที่อาจจะซ่อนอยู่ (เช่น รูปภาพ)
       await setDoc(docRef, payload, { merge: true });
       
-      // เธญเธฑเธเน€เธ”เธ•เธเนเธญเธกเธนเธฅเธ—เธตเนเนเธชเธ”เธเธเธ Modal เธ—เธฑเธเธ—เธต
+      // อัปเดตข้อมูลที่แสดงบน Modal ทันที
       setSelectedRecord({ ...selectedRecord, ...payload });
       setIsEditingRecord(false);
     } catch (error) {
@@ -1389,16 +1389,16 @@ const FormBackend = () => {
     setSortConfig({ key, direction });
   };
 
-  const handleDeleteEvalRecord = async (recordId: string) => {
-    if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
-    try {
-      await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, recordId));
-      setEvaluationRecords(prev => prev.filter(r => r.id !== recordId));
-    } catch (error) {
-      console.error('Error deleting evaluation:', error);
-      alert('Failed to delete evaluation.');
-    }
-  };
+  // const handleDeleteEvalRecord = async (recordId: string) => {
+  //   if (!window.confirm('Are you sure you want to delete this evaluation? This action cannot be undone.')) return;
+  //   try {
+  //     await deleteDoc(doc(db, `${APP_NAME}/root/projectEvaluations`, recordId));
+  //     setEvaluationRecords(prev => prev.filter(r => r.id !== recordId));
+  //   } catch (error) {
+  //     console.error('Error deleting evaluation:', error);
+  //     alert('Failed to delete evaluation.');
+  //   }
+  // };
 
   const handleOpenAssetHistory = async (record: FormRecord, lookupValue?: string) => {
     const normalizedLookupValue = String(lookupValue || '').trim();
@@ -1497,7 +1497,6 @@ const FormBackend = () => {
       setIsLoadingSerialHistory(false);
     }
   };
-
   const handleEditEvalClick = (record: EvaluationRecord) => {
     setSelectedEvalRecord(record);
     setEditEvalFormData({
@@ -1724,7 +1723,7 @@ const FormBackend = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                        <th className="px-2 py-1 font-bold whitespace-nowrap">Action</th>
+                        {/* <th className="px-2 py-1 font-bold whitespace-nowrap">Action</th> */}
                         <th className="px-2 py-1 font-bold whitespace-nowrap">#</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Project</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Evaluator</th>
@@ -1736,7 +1735,7 @@ const FormBackend = () => {
                         <th className="px-2 py-1 font-bold whitespace-nowrap">Q5</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">วันที่ประเมิน</th>
                         <th className="px-2 py-1 font-bold whitespace-nowrap">คำแนะนำ / ความคิดเห็น</th>
-                        <th className="px-3 py-2 font-bold whitespace-nowrap text-center">Action</th>
+                        {/* <th className="px-3 py-2 font-bold whitespace-nowrap text-center">Action</th> */}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1761,9 +1760,6 @@ const FormBackend = () => {
                               <div className="flex items-center gap-2">
                                 <button onClick={(e) => { if (dragState.isDragged) { e.preventDefault(); e.stopPropagation(); return; } handleEditEvalClick(ev); }} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
                                   <span className="material-symbols-outlined text-sm">edit</span>
-                                </button>
-                                <button onClick={(e) => { if (dragState.isDragged) { e.preventDefault(); e.stopPropagation(); return; } handleDeleteEvalRecord(ev.id); }} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Delete">
-                                  <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1802,7 +1798,7 @@ const FormBackend = () => {
                                 <span className="text-slate-400 text-xs italic">เนเธกเนเธกเธตเธเธงเธฒเธกเธเธดเธ”เน€เธซเนเธ</span>
                               )}
                             </td>
-                            <td className="px-3 py-1.5 text-center">
+                            {/* <td className="px-3 py-1.5 text-center">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEvaluation(ev.id); }}
                                 className="inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -1810,7 +1806,7 @@ const FormBackend = () => {
                               >
                                 <span className="material-symbols-outlined text-[18px]">delete</span>
                               </button>
-                            </td>
+                            </td> */}
                           </tr>
                         );
                       })}
