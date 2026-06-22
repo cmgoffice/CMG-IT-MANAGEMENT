@@ -641,7 +641,7 @@ const FormBackend = () => {
   const [records, setRecords] = useState<FormRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
-  const [yearFilter, setYearFilter] = useState('All');
+  const [yearFilter, setYearFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
@@ -798,7 +798,7 @@ const FormBackend = () => {
     const activeForm = formTabs.find((t) => t.id === activeTab);
     if (!activeForm) return;
     setStatusFilter('pending'); // Reset filter when changing tabs
-    setYearFilter('All');
+    setYearFilter('');
     setCurrentPage(1); // Reset page when changing tabs
     setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
     setSortConfig(null); // Reset sort
@@ -845,6 +845,10 @@ const FormBackend = () => {
     )
   ).sort((a, b) => Number(b) - Number(a));
   const shouldFilterByYear = activeTab !== 'evaluation' && availableYears.length > 0;
+  const effectiveYearFilter =
+    activeTab === 'evaluation'
+      ? 'All'
+      : yearFilter || availableYears[0] || 'All';
 
   useEffect(() => {
     if (activeTab === 'evaluation') {
@@ -852,8 +856,18 @@ const FormBackend = () => {
       return;
     }
 
-    if (yearFilter !== 'All' && !availableYears.includes(yearFilter)) {
+    if (!availableYears.length) {
       setYearFilter('All');
+      return;
+    }
+
+    if (!yearFilter) {
+      setYearFilter(availableYears[0]);
+      return;
+    }
+
+    if (yearFilter !== 'All' && !availableYears.includes(yearFilter)) {
+      setYearFilter(availableYears[0]);
     }
   }, [activeTab, availableYears, yearFilter]);
 
@@ -864,7 +878,7 @@ const FormBackend = () => {
   // Filter records based on selected status
   const filteredRecords = recordsForDisplay.filter(record => {
     const recordYear = getRecordYear(record);
-    const matchYear = !shouldFilterByYear || yearFilter === 'All' || recordYear === yearFilter;
+    const matchYear = !shouldFilterByYear || effectiveYearFilter === 'All' || recordYear === effectiveYearFilter;
     if (statusFilter === 'All') return matchYear;
     const currentStatus = (record.status as string)?.toLowerCase() || 'pending';
     return currentStatus === statusFilter.toLowerCase() && matchYear;
@@ -917,7 +931,7 @@ const FormBackend = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, yearFilter]);
+  }, [effectiveYearFilter, statusFilter]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1829,7 +1843,7 @@ const FormBackend = () => {
               <div className="flex items-center gap-2">
                 <label className="text-sm font-bold text-slate-500">Year:</label>
                 <select
-                  value={yearFilter}
+                  value={effectiveYearFilter}
                   onChange={(e) => setYearFilter(e.target.value)}
                   className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#27619D] shadow-sm cursor-pointer"
                 >
