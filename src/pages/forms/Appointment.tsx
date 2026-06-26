@@ -3,14 +3,15 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, storage } from '../../lib/firebase';
-import { generateDocNo } from '../../lib/db';
+import { generateDocNo, ROOT_COLLECTION, ROOT_DOCUMENT } from '../../lib/db';
+import { buildReporterSubmissionMeta } from '../../lib/formSubmission';
 
 const Appointment = () => {
   const today = new Date().toISOString().split('T')[0];
   const { userProfile } = useAuth();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [wrNumber, setWrNumber] = useState('');
   const [requestDate, setRequestDate] = useState(today);
@@ -63,8 +64,6 @@ const Appointment = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!userProfile) return alert('Please login first');
-    if (!wrNumber) return alert('Document number is not ready yet. Please try again.');
-
     setIsSubmitting(true);
     const form = e.currentTarget;
 
@@ -82,11 +81,13 @@ const Appointment = () => {
     const toolsPrepared = formData.get('toolsPrepared') === 'true' ? 'true' : 'false';
 
     try {
-      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
-      const reporterEmail = userProfile.email || 'N/A';
-      const reporterDepartment = department || userProfile.department || '';
-      const reporterJobTitle = jobTitle || userProfile.position || '';
-      const reporterPhone = phone;
+      const latestWrNumber = await generateDocNo('FM-IT-002', 'appointments');
+      setWrNumber(latestWrNumber);
+
+      const submissionMeta = buildReporterSubmissionMeta(
+        userProfile,
+        { department, jobTitle, phone },
+      );
 
       const payload = {
         applicantName,
@@ -100,28 +101,22 @@ const Appointment = () => {
         prepareTools,
         assessEquipment,
         toolsPrepared,
-        docNo: wrNumber,
-        wrNumber,
+        docNo: latestWrNumber,
+        wrNumber: latestWrNumber,
         requestDate,
         attachments: attachments.map((attachment) => attachment.url),
-        submittedBy: reporterEmail,
-        reporter: {
-          name: reporterName,
-          email: reporterEmail,
-          department: reporterDepartment,
-          jobTitle: reporterJobTitle,
-          phone: reporterPhone,
-        },
+        submittedBy: submissionMeta.submittedBy,
+        reporter: submissionMeta.reporter,
         status: 'pending',
         createdAt: Timestamp.now(),
       };
 
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'appointments'), payload);
+      await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'appointments'), payload);
 
       try {
-        await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
-          name: reporterName,
-          email: reporterEmail,
+        await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'logs'), {
+          name: submissionMeta.reporterName,
+          email: submissionMeta.reporterEmail,
           action: 'Appointment Requested',
           module: 'Appointment Form (FM-IT-002)',
           ip: 'Internal',
@@ -132,22 +127,10 @@ const Appointment = () => {
         console.error('Failed to write appointment log:', logError);
       }
 
-      setIsSuccess(true);
+      setSubmitted(true);
       form.reset();
       setAttachments([]);
       setRequestDate(today);
-
-      try {
-        const nextDocNo = await generateDocNo('FM-IT-002', 'appointments');
-        setWrNumber(nextDocNo);
-      } catch (error) {
-        console.error('Failed to refresh FM-IT-002 number:', error);
-        setWrNumber('');
-      }
-
-      setTimeout(() => {
-        setIsSuccess(false);
-      }, 3000);
     } catch (err: any) {
       console.error('Appointment submit failed:', err);
       const detail = err?.code || err?.message || String(err);
@@ -156,6 +139,24 @@ const Appointment = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="max-w-[95%] mx-auto p-8 md:p-12">
+        <div className="glass-card p-10 rounded-2xl shadow-xl text-center">
+          <span className="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
+          <h2 className="text-3xl font-bold text-on-surface mb-2">Submitted Successfully</h2>
+          <p className="text-on-surface-variant mb-6">Your appointment request has been saved.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-[1.02] transition-all"
+          >
+            Submit Another
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -354,9 +355,9 @@ const Appointment = () => {
 
                 <div className="pt-8 flex flex-wrap items-center justify-center gap-4">
                   <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
-                  <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || isSuccess || uploading}>
-                    {isSubmitting ? 'กำลังส่งข้อมูล...' : isSuccess ? 'ส่งสำเร็จ!' : uploading ? 'กำลังอัปโหลดรูป...' : 'ส่งข้อมูล'}
-                    <span className="material-symbols-outlined text-lg">{isSuccess ? 'check_circle' : 'send'}</span>
+                  <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || uploading}>
+                    {isSubmitting ? 'กำลังส่งข้อมูล...' : uploading ? 'กำลังอัปโหลดรูป...' : 'ส่งข้อมูล'}
+                    <span className="material-symbols-outlined text-lg">send</span>
                   </button>
                 </div>
               </form>

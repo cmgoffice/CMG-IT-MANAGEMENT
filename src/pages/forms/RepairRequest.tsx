@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, storage } from '../../lib/firebase';
-import { generateDocNo } from '../../lib/db';
+import { generateDocNo, ROOT_COLLECTION, ROOT_DOCUMENT } from '../../lib/db';
 import { collection, addDoc, Timestamp, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { buildReporterSubmissionMeta } from '../../lib/formSubmission';
 // import { useNavigate } from 'react-router-dom';
 
 const RepairRequest = () => {
@@ -14,7 +15,6 @@ const RepairRequest = () => {
   const [reporterDepartment, setReporterDepartment] = useState('');
   const [reporterJobTitle, setReporterJobTitle] = useState('');
   const [reporterPhone, setReporterPhone] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
 
   const [docNo, setDocNo] = useState('');
   const [requestDate, setRequestDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -50,12 +50,32 @@ const RepairRequest = () => {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadDocNo = async () => {
+      try {
+        const nextDocNo = await generateDocNo('FM-IT-001', 'repairRequests');
+        if (!cancelled) {
+          setDocNo(nextDocNo);
+        }
+      } catch (error) {
+        console.error('Failed to generate FM-IT-001 number:', error);
+      }
+    };
+
+    loadDocNo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (userProfile) {
       console.log('userProfile:', userProfile);
       setReporterName(`${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim());
       setReporterDepartment(userProfile.department || '');
       setReporterJobTitle(userProfile.position || '');
-      setReporterEmail(userProfile.email || '');
     }
   }, [userProfile]);
 
@@ -128,10 +148,17 @@ const RepairRequest = () => {
     }
     setIsSubmitting(true);
     try {
-      const newDocNo = await generateDocNo('FM-IT-001', 'repairRequests');
-      setDocNo(newDocNo);
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT/root/repairRequests'), {
-        docNo: newDocNo,
+      const latestDocNo = await generateDocNo('FM-IT-001', 'repairRequests');
+      setDocNo(latestDocNo);
+
+      const submissionMeta = buildReporterSubmissionMeta(userProfile, {
+        department: reporterDepartment,
+        jobTitle: reporterJobTitle,
+        phone: reporterPhone,
+      });
+
+      await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'repairRequests'), {
+        docNo: latestDocNo,
         requestDate,
         equipmentCategory: {
           computer: eqComputer,
@@ -141,13 +168,7 @@ const RepairRequest = () => {
           other: eqOther,
           otherText: eqOtherText,
         },
-        reporter: {
-          name: reporterName,
-          department: reporterDepartment,
-          jobTitle: reporterJobTitle,
-          phone: reporterPhone,
-          email: reporterEmail,
-        },
+        reporter: submissionMeta.reporter,
         issueDescription: {
           wontTurnOn: symptomWontTurnOn,
           slow: symptomSlow,
@@ -168,7 +189,7 @@ const RepairRequest = () => {
         },
         attachments: attachments.map((a) => a.url),
         status: 'pending',
-        submittedBy: userProfile.email,
+        submittedBy: submissionMeta.submittedBy,
         createdAt: Timestamp.now(),
       });
 
@@ -192,7 +213,7 @@ const RepairRequest = () => {
           const newEntry = {
             date: new Date().toLocaleString('sv-SE').replace('T', ' '),
             action: 'Repair requested',
-            detail: `${newDocNo || 'N/A'}: ${composedDetail} | Requester: ${reporterName}`,
+            detail: `${latestDocNo || 'N/A'}: ${composedDetail} | Requester: ${submissionMeta.reporterName}`,
           };
           await updateDoc(assetRef, {
             history: [...existingHistory, newEntry],
@@ -201,9 +222,9 @@ const RepairRequest = () => {
       }
 
       // Write to logs collection
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
-        name: reporterName,
-        email: reporterEmail,
+      await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'logs'), {
+        name: submissionMeta.reporterName,
+        email: submissionMeta.reporterEmail,
         action: 'Repair Requested',
         module: 'Repair Form (FM-IT-001)',
         ip: 'Internal', // เก็บค่า IP จริงหากมี

@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { generateDocNo } from '../../lib/db';
+import { generateDocNo, ROOT_COLLECTION, ROOT_DOCUMENT } from '../../lib/db';
+import { buildReporterSubmissionMeta } from '../../lib/formSubmission';
 // import { useNavigate } from 'react-router-dom';
 
 const AssetReturn = () => {
   const today = new Date().toISOString().split('T')[0];
   const { userProfile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [wrNumber, setWrNumber] = useState('');
   const [requestDate, setRequestDate] = useState(today);
   // const navigate = useNavigate();
@@ -38,7 +39,6 @@ const AssetReturn = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!userProfile) return alert('Please login first');
-    if (!wrNumber) return alert('Document number is not ready yet. Please try again.');
     setIsSubmitting(true);
 
     const form = e.currentTarget;
@@ -46,33 +46,27 @@ const AssetReturn = () => {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      const reporterName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown';
-      const reporterEmail = userProfile.email || 'N/A';
-      const reporterDepartment = typeof data.department === 'string' ? data.department : userProfile.department || '';
-      const reporterJobTitle = typeof data.jobTitle === 'string' ? data.jobTitle : userProfile.position || '';
-      const reporterPhone = typeof data.phone === 'string' ? data.phone : '';
+      const latestWrNumber = await generateDocNo('FM-IT-004', 'assetReturns');
+      setWrNumber(latestWrNumber);
+
+      const submissionMeta = buildReporterSubmissionMeta(userProfile, data);
 
       // Save to specific form collection
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'assetReturns'), {
+      await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assetReturns'), {
         ...data,
-        docNo: wrNumber,
-        wrNumber,
+        docNo: latestWrNumber,
+        wrNumber: latestWrNumber,
         requestDate,
-        reporter: {
-          name: reporterName,
-          email: reporterEmail,
-          department: reporterDepartment,
-          jobTitle: reporterJobTitle,
-          phone: reporterPhone,
-        },
+        submittedBy: submissionMeta.submittedBy,
+        reporter: submissionMeta.reporter,
         status: 'pending',
         createdAt: Timestamp.now()
       });
 
       // Save to Logs
-      await addDoc(collection(db, 'CMG-IT-MANAGEMENT', 'root', 'logs'), {
-        name: reporterName,
-        email: reporterEmail,
+      await addDoc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'logs'), {
+        name: submissionMeta.reporterName,
+        email: submissionMeta.reporterEmail,
         action: 'Asset Returned',
         module: 'Asset Return Form (FM-IT-004)',
         ip: 'Internal',
@@ -80,19 +74,7 @@ const AssetReturn = () => {
         createdAt: Timestamp.now(),
       });
 
-      setIsSuccess(true);
-      form.reset();
-      setRequestDate(today);
-      try {
-        const nextDocNo = await generateDocNo('FM-IT-004', 'assetReturns');
-        setWrNumber(nextDocNo);
-      } catch (error) {
-        console.error('Failed to refresh FM-IT-004 number:', error);
-        setWrNumber('');
-      }
-      setTimeout(() => {
-        setIsSuccess(false);
-      }, 3000);
+      setSubmitted(true);
     } catch (err) {
       console.error(err);
       alert('Failed to submit.');
@@ -100,6 +82,24 @@ const AssetReturn = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="max-w-[95%] mx-auto p-8 md:p-12">
+        <div className="glass-card p-10 rounded-2xl shadow-xl text-center">
+          <span className="material-symbols-outlined text-6xl text-green-500 mb-4">check_circle</span>
+          <h2 className="text-3xl font-bold text-on-surface mb-2">Submitted Successfully</h2>
+          <p className="text-on-surface-variant mb-6">Your asset return request has been saved.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold shadow-lg hover:scale-[1.02] transition-all"
+          >
+            Submit Another
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -299,9 +299,9 @@ const AssetReturn = () => {
                 {/* Form Actions */}
                 <div className="pt-8 flex flex-wrap items-center justify-center gap-4">
                   <button className="text-outline font-bold hover:text-error transition-colors px-4 py-2 text-base" type="reset">ยกเลิก</button>
-                  <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting || isSuccess}>
-                    {isSubmitting ? 'กำลังส่งข้อมูล...' : isSuccess ? 'ส่งสำเร็จ!' : 'ส่งข้อมูล'}
-                    <span className="material-symbols-outlined text-lg">{isSuccess ? 'check_circle' : 'send'}</span>
+                  <button className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50" type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อมูล'}
+                    <span className="material-symbols-outlined text-lg">send</span>
                   </button>
                 </div>
               </form>

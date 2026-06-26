@@ -640,7 +640,7 @@ const FormBackend = () => {
   const [activeTab, setActiveTab] = useState('001');
   const [records, setRecords] = useState<FormRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [yearFilter, setYearFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
@@ -799,6 +799,7 @@ const FormBackend = () => {
     if (!activeForm) return;
     setStatusFilter('pending'); // Reset filter when changing tabs
     setYearFilter('');
+    setStatusFilter('All');
     setCurrentPage(1); // Reset page when changing tabs
     setHiddenColumns(new Set()); // Reset hidden columns when changing tabs
     setSortConfig(null); // Reset sort
