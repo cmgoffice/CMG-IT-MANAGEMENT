@@ -129,6 +129,27 @@ const AssetRequest = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        const reqTypes = [];
+        if (data.reqType_new) reqTypes.push('ขอเบิกอุปกรณ์ IT');
+        if (data.reqType_change) reqTypes.push('ขอเปลี่ยนผู้ใช้งาน');
+        const reqTypeStr = reqTypes.join(', ') || 'ไม่ระบุ';
+
+        const equips = [];
+        if (data.eqComputer) equips.push('คอมพิวเตอร์/โน้ตบุ๊ค');
+        if (data.eqPrinter) equips.push('เครื่องพิมพ์');
+        if (data.eqCctv) equips.push('กล้องวงจรปิด');
+        if (data.eqRadio) equips.push('วิทยุสื่อสาร');
+        if (data.eqMonitor) equips.push('จอภาพ');
+        if (data.eqOther) equips.push('อื่นๆ');
+        const equipStr = equips.join(', ') || 'ไม่ระบุ';
+
+        const lineMessage = `\n📢 ขอเบิกอุปกรณ์/เปลี่ยนผู้ใช้ (FM-IT-003)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้ขอ : ${data.applicantName || '-'} (${data.department || '-'})\n📍 ตำแหน่ง : ${data.jobTitle || '-'}\n───────────────────\n📌 ประเภทคำขอ : ${reqTypeStr}\n⚙️ อุปกรณ์ที่ขอ : ${equipStr}\n📦 จำนวน : ${data.eqQuantity || '-'}\n⚠️ เหตุผล : ${data.reason || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);

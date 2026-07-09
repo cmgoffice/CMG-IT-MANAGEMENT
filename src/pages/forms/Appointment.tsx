@@ -127,6 +127,18 @@ const Appointment = () => {
         console.error('Failed to write appointment log:', logError);
       }
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        let reqDateStr = appointmentDate;
+        try {
+          reqDateStr = new Date(appointmentDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch(e) {}
+        
+        const lineMessage = `\n📢 นัดหมายเข้าหน้างาน (FM-IT-002)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้นัดหมาย : ${applicantName} (${department})\n📍 ตำแหน่ง : ${jobTitle || '-'}\n───────────────────\n🗓️ วันที่นัด : ${reqDateStr} เวลา ${appointmentTime || '-'}\n🏢 สถานที่ : ${location || '-'}\n📌 รายละเอียดงาน : ${jobDetails || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
       form.reset();
       setAttachments([]);

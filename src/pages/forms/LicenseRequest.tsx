@@ -74,6 +74,28 @@ const LicenseRequest = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        const reqTypes = [];
+        if (data.reqType_new) reqTypes.push('เปิดสิทธิ์ใหม่');
+        if (data.reqType_renew) reqTypes.push('ต่ออายุ');
+        const reqTypeStr = reqTypes.join(', ') || 'ไม่ระบุ';
+
+        const sw = [];
+        if (data.sw_office) sw.push('Office 365');
+        if (data.sw_windows) sw.push('Windows');
+        if (data.sw_sketchup) sw.push('Sketchup');
+        if (data.sw_autodesk) sw.push('Autodesk');
+        if (data.sw_adobe) sw.push('Adobe');
+        if (data.sw_other) sw.push(data.sw_otherText || 'อื่นๆ');
+        const swStr = sw.join(', ') || 'ไม่ระบุ';
+
+        const lineMessage = `\n📢 ขอสิทธิ์ License (FM-IT-005)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้ขอ : ${data.applicantName || '-'} (${data.department || '-'})\n───────────────────\n📌 ประเภท : ${reqTypeStr}\n💻 โปรแกรม : ${swStr}\n⚠️ เหตุผล : ${data.reason || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);

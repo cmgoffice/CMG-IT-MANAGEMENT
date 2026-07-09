@@ -232,6 +232,20 @@ const RepairRequest = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const symptoms = [
+          symptomWontTurnOn && "เปิดเครื่องไม่ติด",
+          symptomSlow && 'เครื่องช้า/กระตุก',
+          symptomNoPower && 'ไฟไม่เข้า',
+          symptomBroken && 'แตก/หัก',
+          symptomOther && 'อื่นๆ',
+        ].filter(Boolean).join(', ');
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        const lineMessage = `\n📢 แจ้งซ่อม/บำรุงรักษา (FM-IT-001)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestDocNo}\n👤 ผู้แจ้ง : ${submissionMeta.reporterName} (${reporterDepartment})\n📍 ตำแหน่ง : ${reporterJobTitle || '-'}\n───────────────────\n🔧 ประเภท : อุปกรณ์ IT\n⚙️ อุปกรณ์ : ${assetId || 'ไม่ระบุ'}\n🏷️ ยี่ห้อ/รุ่น : ${assetBrand || '-'} ${assetModel || '-'}\n📌 อาการหลัก : ${symptoms || '-'}\n⚠️ รายละเอียด : ${detailedDescription || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error('Submit error:', err);

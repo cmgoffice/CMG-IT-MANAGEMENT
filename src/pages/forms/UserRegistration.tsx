@@ -73,6 +73,20 @@ const UserRegistration = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        const reqTypes = [];
+        if (data.req_email) reqTypes.push('Email');
+        if (data.req_storage) reqTypes.push('พื้นที่จัดเก็บข้อมูล');
+        if (data.req_cctv) reqTypes.push('CCTV Online');
+        const reqTypeStr = reqTypes.join(', ') || 'ไม่ระบุ';
+
+        const lineMessage = `\n📢 ขอลงทะเบียนผู้ใช้ (FM-IT-006)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้ขอ : ${data.applicantName || '-'} (${data.department || '-'})\n📞 เบอร์โทร : ${data.phone || '-'}\n───────────────────\n📌 ประเภทคำขอ : ${reqTypeStr}\n✉️ Email : ${data.email || '-'}\n⚠️ เหตุผล : ${data.reason || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);

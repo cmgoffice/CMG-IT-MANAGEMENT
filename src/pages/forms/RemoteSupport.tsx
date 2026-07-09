@@ -77,6 +77,22 @@ const RemoteSupport = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        const symps = [];
+        if (data.symp_slow) symps.push('เครื่องช้า/กระตุก');
+        if (data.symp_software) symps.push('ลง/แก้โปรแกรม');
+        if (data.symp_check) symps.push('ตรวจเช็คเบื้องต้น');
+        if (data.symp_support) symps.push('สนับสนุนการใช้งาน');
+        if (data.symp_other) symps.push('อื่นๆ');
+        const sympStr = symps.join(', ') || 'ไม่ระบุ';
+
+        const lineMessage = `\n📢 ขอ Remote Support (FM-IT-007)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้ขอ : ${data.applicantName || '-'} (${data.department || '-'})\n📞 เบอร์โทร : ${data.phone || '-'}\n───────────────────\n📌 อาการ : ${sympStr}\n⚠️ ความต้องการ : ${data.requirements || '-'}\n💻 โปรแกรมรีโมท : ${data.remoteProgram || '-'}\n🔑 รหัสรีโมท : ${data.remoteId || '-'}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);

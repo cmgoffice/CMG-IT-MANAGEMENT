@@ -74,6 +74,17 @@ const AssetReturn = () => {
         createdAt: Timestamp.now(),
       });
 
+      // Send Line Notification
+      import('../../lib/lineNotify').then(({ sendLineNotification }) => {
+        const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        const reqName = data.returnerName || data.cancelUser || '-';
+        const asset = data.assetId || data.cancelAssetId || '-';
+        const reason = data.reason || data.cancelReason || '-';
+
+        const lineMessage = `\n📢 คืนอุปกรณ์/ยกเลิกใช้งาน (FM-IT-004)\n───────────────────\n📅 วันที่แจ้ง : ${todayStr}\n📄 เลขที่ใบแจ้ง : ${latestWrNumber}\n👤 ผู้ขอ : ${reqName} (${data.department || data.cancelDepartment || '-'})\n───────────────────\n⚙️ หมายเลขทรัพย์สิน : ${asset}\n⚠️ เหตุผล : ${reason}\n───────────────────`;
+        sendLineNotification(lineMessage);
+      });
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);
