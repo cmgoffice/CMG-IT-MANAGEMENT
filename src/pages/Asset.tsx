@@ -8,6 +8,8 @@ import { useAuth, type UserProfile } from '../contexts/AuthContext';
 
 type AssetStatus = string;
 type AssetCategory = string;
+type AssetSection = 'Computer' | 'Accessory';
+type ActiveFilterSource = 'category' | 'accessory';
 
 type AssetHistory = {
   date: string;
@@ -16,7 +18,9 @@ type AssetHistory = {
 };
 
 type AssetItem = {
+  docId: string;
   id: string;
+  assetSection: AssetSection;
   name: string;
   spec: string;
   icon: string;
@@ -41,7 +45,7 @@ type AssetItem = {
   history: AssetHistory[];
 };
 
-type AssetPayload = Omit<AssetItem, 'id'> & {
+type AssetPayload = Omit<AssetItem, 'id' | 'docId'> & {
   requestedAssetId?: string;
 };
 
@@ -81,6 +85,8 @@ const categoryIconMap: Record<string, { icon: string; iconBg: string; iconColor:
   Monitor:    { icon: 'desktop_windows',   iconBg: 'bg-[#d4c8f9]/30',  iconColor: 'text-[#625983]' },
   Printer:    { icon: 'print',             iconBg: 'bg-[#dce4e8]/50',  iconColor: 'text-[#446378]' },
   Phone:      { icon: 'smartphone',        iconBg: 'bg-[#fde68a]/40',  iconColor: 'text-[#92400e]' },
+  Mouse:      { icon: 'mouse',             iconBg: 'bg-[#cffafe]/60',  iconColor: 'text-[#0f766e]' },
+  Keyboard:   { icon: 'keyboard',          iconBg: 'bg-[#e0e7ff]/60',  iconColor: 'text-[#3730a3]' },
   Tablet:     { icon: 'tablet_mac',        iconBg: 'bg-[#a7f3d0]/40',  iconColor: 'text-[#065f46]' },
   Server:     { icon: 'dns',               iconBg: 'bg-[#fca5a5]/30',  iconColor: 'text-[#7f1d1d]' },
   Network:    { icon: 'router',            iconBg: 'bg-[#6ee7b7]/30',  iconColor: 'text-[#064e3b]' },
@@ -117,6 +123,8 @@ const categoryBadgeMap: Record<string, string> = {
   Monitor:    'bg-[#ede9fe] text-[#5b21b6]',
   Printer:    'bg-[#e2e8f0] text-[#334155]',
   Phone:      'bg-[#fef9c3] text-[#854d0e]',
+  Mouse:      'bg-[#ccfbf1] text-[#115e59]',
+  Keyboard:   'bg-[#e0e7ff] text-[#3730a3]',
   Tablet:     'bg-[#d1fae5] text-[#065f46]',
   Server:     'bg-[#fee2e2] text-[#7f1d1d]',
   Network:    'bg-[#ccfbf1] text-[#134e4a]',
@@ -144,8 +152,78 @@ const getCategoryBadge = (cat: string): string => {
   return fallbackBadgePalette[hash % fallbackBadgePalette.length];
 };
 
+const defaultCategories = ['Laptop', 'Monitor', 'Printer', 'Phone'];
+const accessoryTypeOptions: AssetCategory[] = ['All Accessories', 'Mouse', 'Keyboard'];
+const accessoryFormCategories: AssetCategory[] = ['Mouse', 'Keyboard'];
+const accessoryCategories = new Set<AssetCategory>(['Mouse', 'Keyboard']);
+
+const getAssetSection = (category: AssetCategory, assetSection?: string): AssetSection => {
+  if (assetSection === 'Accessory' || assetSection === 'Computer') return assetSection;
+  return accessoryCategories.has(category) ? 'Accessory' : 'Computer';
+};
+
+const getAssetFormContent = (category: AssetCategory) => {
+  if (category === 'Mouse') {
+    return {
+      idPlaceholder: 'e.g. IT-MOU-001',
+      serialPlaceholder: 'e.g. MSE-LOGI-MX3-001',
+      sectionTitle: 'Mouse Specifications',
+      makeLabel: 'Brand/Manufacturer',
+      makePlaceholder: 'e.g. Logitech, Razer',
+      modelLabel: 'Model',
+      modelPlaceholder: 'e.g. MX Master 3S',
+      processorLabel: 'Connection Type',
+      processorPlaceholder: 'e.g. Wireless, Bluetooth, USB',
+      ramLabel: 'DPI / Sensitivity',
+      ramPlaceholder: 'e.g. 8000 DPI',
+      storageLabel: 'Button Count',
+      storagePlaceholder: 'e.g. 6 Buttons',
+      operatingSystemLabel: 'Compatibility',
+      operatingSystemPlaceholder: 'e.g. Windows, macOS',
+    };
+  }
+
+  if (category === 'Keyboard') {
+    return {
+      idPlaceholder: 'e.g. IT-KBD-001',
+      serialPlaceholder: 'e.g. KBD-LOGI-MXK-001',
+      sectionTitle: 'Keyboard Specifications',
+      makeLabel: 'Brand/Manufacturer',
+      makePlaceholder: 'e.g. Logitech, Keychron',
+      modelLabel: 'Model',
+      modelPlaceholder: 'e.g. K8 Pro',
+      processorLabel: 'Switch Type',
+      processorPlaceholder: 'e.g. Red, Brown, Blue',
+      ramLabel: 'Layout',
+      ramPlaceholder: 'e.g. Full Size, TKL, 75%',
+      storageLabel: 'Connection Type',
+      storagePlaceholder: 'e.g. Wired, Bluetooth, 2.4GHz',
+      operatingSystemLabel: 'Compatibility',
+      operatingSystemPlaceholder: 'e.g. Windows, macOS',
+    };
+  }
+
+  return {
+    idPlaceholder: 'e.g. IT-LAP-025',
+    serialPlaceholder: 'e.g. C02FX123GH67',
+    sectionTitle: 'Hardware Specifications',
+    makeLabel: 'Make/Manufacturer',
+    makePlaceholder: 'e.g. Apple, Dell, HP',
+    modelLabel: 'Model',
+    modelPlaceholder: 'e.g. MacBook Pro 16"',
+    processorLabel: 'Processor Type and Speed',
+    processorPlaceholder: 'e.g. Intel i7 2.6GHz',
+    ramLabel: 'RAM',
+    ramPlaceholder: 'e.g. 16GB',
+    storageLabel: 'Storage Capacity',
+    storagePlaceholder: 'e.g. 512GB SSD',
+    operatingSystemLabel: 'Operating System',
+    operatingSystemPlaceholder: 'e.g. Windows 11, macOS',
+  };
+};
+
 const defaultDropdownOptions: DropdownOptions = {
-  categories: ['Laptop', 'Monitor', 'Printer', 'Phone'],
+  categories: defaultCategories,
   ramOptions: ['4GB', '8GB', '16GB', '32GB', '64GB'],
   storageOptions: ['128GB SSD', '256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD', '1TB HDD', '2TB HDD'],
 };
@@ -173,7 +251,9 @@ const Asset = () => {
   const { userProfile } = useAuth();
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [search, setSearch] = useState('');
+  const [activeFilterSource, setActiveFilterSource] = useState<ActiveFilterSource>('category');
   const [category, setCategory] = useState('All Assets');
+  const [accessoryType, setAccessoryType] = useState<AssetCategory>('All Accessories');
   const [status, setStatus] = useState('All Statuses');
   const [currentPage, setCurrentPage] = useState(1);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -209,9 +289,24 @@ const Asset = () => {
   );
 
   const uniqueCategories = useMemo(() => {
-    const cats = new Set(assets.map((a) => a.category).filter(Boolean));
+    const cats = new Set([
+      ...dropdownOptions.categories,
+      ...assets
+        .filter((a) => getAssetSection(a.category, a.assetSection) === 'Computer')
+        .map((a) => a.category)
+        .filter(Boolean),
+    ]);
     return Array.from(cats).sort();
-  }, [assets]);
+  }, [assets, dropdownOptions.categories]);
+
+  const isAccessoryForm = accessoryCategories.has(formData.category);
+  const formContent = getAssetFormContent(formData.category);
+  const accessoryFilterValue = accessoryType;
+  const formCategoryOptions = isAccessoryForm ? accessoryFormCategories : dropdownOptions.categories;
+  const firstValidationError = Object.values(errors).find(Boolean);
+  const defaultAddCategory = activeFilterSource === 'accessory'
+    ? (accessoryType !== 'All Accessories' ? accessoryType : accessoryFormCategories[0])
+    : (category !== 'All Assets' ? category : defaultForm.category);
 
   const filtered = useMemo(
     () =>
@@ -223,18 +318,31 @@ const Asset = () => {
           a.serial.toLowerCase().includes(q) ||
           a.id.toLowerCase().includes(q) ||
           (a.user ?? '').toLowerCase().includes(q);
-        const matchCategory = category === 'All Assets' || a.category === category;
+        const assetSection = getAssetSection(a.category, a.assetSection);
+        const matchCategory =
+          activeFilterSource === 'accessory'
+            ? (assetSection === 'Accessory' && (accessoryType === 'All Accessories' || a.category === accessoryType))
+            : (assetSection === 'Computer' && (category === 'All Assets' || a.category === category));
         const matchStatus = status === 'All Statuses' || a.status === status;
         return matchSearch && matchCategory && matchStatus;
       }),
-    [assets, search, category, status],
+    [assets, search, activeFilterSource, category, accessoryType, status],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
   const loadAssets = async () => {
     const snap = await getDocs(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets'));
-    const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AssetItem, 'id'>) }));
+    const rows = snap.docs.map((d) => {
+      const data = d.data() as AssetPayload;
+      const resolvedCategory = data.category ?? '';
+      return {
+        ...data,
+        docId: d.id,
+        assetSection: getAssetSection(resolvedCategory, data.assetSection),
+        id: data.requestedAssetId ?? d.id,
+      } as AssetItem;
+    });
     setAssets(rows);
   };
 
@@ -302,11 +410,22 @@ const Asset = () => {
     return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
   };
 
-  const openAddModal = () => {
+  const openAddModal = (presetCategory: AssetCategory = defaultForm.category) => {
     setModalMode('add');
-    setFormData(defaultForm);
+    setSelectedAsset(null);
+    setFormData({ ...defaultForm, category: presetCategory });
     setErrors({});
+    setShowAddCategory(false);
+    setShowAddRam(false);
+    setShowAddStorage(false);
     setShowFormModal(true);
+  };
+
+  const handleAccessoryFilter = (assetCategory: AssetCategory) => {
+    setActiveFilterSource('accessory');
+    setCategory('All Assets');
+    setAccessoryType(assetCategory);
+    setCurrentPage(1);
   };
 
   const openEditModal = (asset: AssetItem) => {
@@ -375,30 +494,34 @@ const Asset = () => {
 
   const validateForm = () => {
     const nextErrors: Partial<Record<keyof AssetFormState, string>> = {};
-    if (!formData.id.trim()) nextErrors.id = 'Asset ID is required.';
-    if (!formData.serial.trim()) nextErrors.serial = 'Serial Number is required.';
     if (!formData.status) nextErrors.status = 'Status is required.';
     if (!formData.category) nextErrors.category = 'Category is required.';
     if (
+      formData.id.trim() &&
       modalMode === 'edit' &&
-      assets.some((a) => a.id.toLowerCase() === formData.id.trim().toLowerCase() && a.id !== selectedAsset?.id)
+      assets.some((a) => a.id.toLowerCase() === formData.id.trim().toLowerCase() && a.docId !== selectedAsset?.docId)
     ) {
       nextErrors.id = 'Asset ID already exists.';
     }
     if (
+      formData.serial.trim() &&
       assets.some(
-        (a) => a.serial.toLowerCase() === formData.serial.trim().toLowerCase() && (modalMode === 'add' || a.id !== selectedAsset?.id),
+        (a) => a.serial.toLowerCase() === formData.serial.trim().toLowerCase() && (modalMode === 'add' || a.docId !== selectedAsset?.docId),
       )
     ) {
       nextErrors.serial = 'Serial Number already exists.';
     }
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    return nextErrors;
   };
 
   const handleSaveAsset = async () => {
-    if (!validateForm()) {
-      alert('Please fix highlighted errors before submitting.');
+    const nextErrors = validateForm();
+    if (Object.keys(nextErrors).length > 0) {
+      const modalElement = document.querySelector('[data-asset-form-modal="true"]');
+      if (modalElement instanceof HTMLElement) {
+        modalElement.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
 
@@ -413,10 +536,13 @@ const Asset = () => {
     const autoSpec = specParts.length > 0 ? specParts.join(' / ') : 'No specification';
 
     const assetId = formData.id.trim();
-    const finalAssetId = modalMode === 'add' ? generateUniqueAssetId(assetId) : assetId;
-    const duplicateAssetIdResolved = modalMode === 'add' && finalAssetId !== assetId;
+    const finalDisplayAssetId = assetId ? generateUniqueAssetId(assetId) : '';
+    const duplicateAssetIdResolved = modalMode === 'add' && !!assetId && finalDisplayAssetId !== assetId;
+    const finalDocId = modalMode === 'add'
+      ? (assetId ? finalDisplayAssetId : doc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets')).id)
+      : (selectedAsset?.docId ?? selectedAsset?.id ?? doc(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets')).id);
     const matchedUser = normalizedUser ? usersList.find((u) => u.name === normalizedUser) : undefined;
-    console.log('Saving asset - matchedUser:', matchedUser, 'userAvatar:', matchedUser?.photoURL ?? null, 'finalAssetId:', finalAssetId);
+    console.log('Saving asset - matchedUser:', matchedUser, 'userAvatar:', matchedUser?.photoURL ?? null, 'finalDocId:', finalDocId);
 
     const previousUser = modalMode === 'edit' ? (selectedAsset?.user ?? null) : null;
     const userChanged = previousUser !== normalizedUser;
@@ -436,6 +562,7 @@ const Asset = () => {
     }
 
     const payload: AssetPayload = {
+      assetSection: getAssetSection(formData.category),
       name: autoName,
       spec: autoSpec,
       serial: formData.serial.trim(),
@@ -464,8 +591,8 @@ const Asset = () => {
                 date: new Date().toLocaleString('sv-SE').replace('T', ' '),
                 action: 'Registered',
                 detail: duplicateAssetIdResolved
-                  ? `Asset ID "${assetId}" already existed. Assigned new Asset ID "${finalAssetId}".`
-                  : 'Asset created from Asset page.',
+                    ? `Asset ID "${assetId}" already existed. Assigned new Asset ID "${finalDisplayAssetId}".`
+                    : 'Asset created from Asset page.',
               },
               ...assignmentHistory,
             ]
@@ -474,11 +601,11 @@ const Asset = () => {
               ...assignmentHistory,
               ...(selectedAsset?.history ?? []),
             ],
-      ...(duplicateAssetIdResolved ? { requestedAssetId: assetId } : {}),
+      requestedAssetId: modalMode === 'add' ? finalDisplayAssetId : assetId,
     };
 
     try {
-      await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', finalAssetId), payload);
+      await setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', finalDocId), payload);
       setShowFormModal(false);
       setSelectedAsset(null);
       await loadAssets();
@@ -491,7 +618,7 @@ const Asset = () => {
 
   const handleDeleteAsset = () => {
     if (!selectedAsset) return;
-    void deleteDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', selectedAsset.id)).then(async () => {
+    void deleteDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', selectedAsset.docId || selectedAsset.id)).then(async () => {
       setShowDeleteModal(false);
       setSelectedAsset(null);
       await loadAssets();
@@ -637,7 +764,9 @@ const Asset = () => {
           const autoSpec = specParts.length > 0 ? specParts.join(' / ') : 'No specification';
 
           parsedAssets.push({
+            docId: id.trim(),
             id: id.trim(),
+            assetSection: getAssetSection(categoryValue),
             name: autoName,
             spec: autoSpec,
             serial: serial.trim(),
@@ -687,8 +816,11 @@ const Asset = () => {
 
     try {
       const promises = importPreview.map((asset) => {
-        const { id, ...data } = asset;
-        return setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', id), data);
+        const { docId, id, ...data } = asset;
+        return setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', docId), {
+          ...data,
+          requestedAssetId: id,
+        });
       });
 
       await Promise.all(promises);
@@ -804,7 +936,7 @@ const Asset = () => {
                   Import
                 </button>
                 <button
-                  onClick={openAddModal}
+                  onClick={() => openAddModal(defaultAddCategory)}
                   className="flex items-center gap-2 bg-[#27619d] text-[#f8f8ff] px-4 py-2 rounded-lg font-semibold text-sm shadow-lg shadow-[#27619d]/20 hover:opacity-90 transition-opacity active:scale-[0.98] font-body"
                 >
                   <span className="material-symbols-outlined text-sm">add</span>
@@ -816,13 +948,17 @@ const Asset = () => {
         </header>
 
         <section className="flex flex-wrap gap-3 mb-8">
-          <div className="flex items-center gap-2 bg-white/40 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 bg-white/40 backdrop-blur-md px-3 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
             <span className="material-symbols-outlined text-lg">filter_list</span>
             Category:
             <select
-              className="bg-transparent border-none p-0 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
+              className="w-auto min-w-0 bg-transparent border-none p-0 pr-1 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setActiveFilterSource('category');
+                setAccessoryType('All Accessories');
+                setCategory(e.target.value);
+              }}
             >
               <option value="All Assets">All Assets</option>
               {uniqueCategories.map((cat) => (
@@ -832,10 +968,10 @@ const Asset = () => {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2 bg-white/40 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 bg-white/40 backdrop-blur-md px-3 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
             Status:
             <select
-              className="bg-transparent border-none p-0 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
+              className="w-auto min-w-0 bg-transparent border-none p-0 pr-1 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -844,6 +980,26 @@ const Asset = () => {
               <option>Repair</option>
               <option>Retired</option>
             </select>
+          </div>
+          <div className="inline-flex w-fit shrink-0 items-center gap-2 bg-white/40 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-[#596064] border border-white/50 shadow-sm">
+            <span className="material-symbols-outlined text-lg">inventory_2</span>
+            Accessory:
+            <div className="relative inline-flex w-fit items-center">
+              <select
+                className="w-auto min-w-0 appearance-none bg-transparent border-none p-0 pr-7 text-[#27619d] font-bold focus:ring-0 cursor-pointer outline-none text-sm"
+                value={accessoryFilterValue}
+                onChange={(e) => handleAccessoryFilter(e.target.value)}
+              >
+                {accessoryTypeOptions.map((assetCategory) => (
+                  <option key={assetCategory} value={assetCategory}>
+                    {assetCategory}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-1 material-symbols-outlined text-[18px] text-[#27619d]">
+                expand_more
+              </span>
+            </div>
           </div>
         </section>
 
@@ -869,7 +1025,7 @@ const Asset = () => {
                   </tr>
                 )}
                 {paginatedAssets.map((asset) => (
-                  <tr key={asset.id} className="group hover:bg-white/60 transition-colors">
+                  <tr key={asset.docId} className="group hover:bg-white/60 transition-colors">
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         {(() => {
@@ -883,9 +1039,9 @@ const Asset = () => {
                         <div>
                           <button
                             className="font-display font-bold text-sm text-[#27619d] hover:underline cursor-pointer text-left bg-transparent border-none p-0"
-                            onClick={() => navigate('/equipment', { state: { assetId: asset.id } })}
+                            onClick={() => navigate('/equipment', { state: { assetId: asset.id || asset.docId } })}
                           >
-                            {asset.id} {asset.name}
+                            {[asset.id, asset.name].filter(Boolean).join(' ')}
                           </button>
                           <div className="text-xs text-[#596064] font-body">{asset.spec}</div>
                         </div>
@@ -993,15 +1149,21 @@ const Asset = () => {
       {showFormModal && createPortal(
         <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
           <div className="absolute inset-0 bg-[#2c3437]/20 backdrop-blur-sm" onClick={() => setShowFormModal(false)} />
-          <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
+          <div data-asset-form-modal="true" className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 w-full max-w-6xl p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-extrabold text-[#2c3437] tracking-tight font-display">
-                {modalMode === 'add' ? 'Register New Asset' : `Edit ${selectedAsset?.id ?? 'Asset'}`}
+                {modalMode === 'add' ? 'Register New Asset' : `Edit ${selectedAsset?.id || selectedAsset?.name || 'Asset'}`}
               </h2>
               <button onClick={() => setShowFormModal(false)} className="p-2 rounded-full hover:bg-[#eaeff2] transition-colors">
                 <span className="material-symbols-outlined text-[#596064]">close</span>
               </button>
             </div>
+
+            {firstValidationError && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {firstValidationError}
+              </div>
+            )}
 
             <div className="space-y-8">
               {/* Section 1: Basic Information */}
@@ -1012,10 +1174,10 @@ const Asset = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Asset ID <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Asset ID</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. IT-LAP-025" 
+                      placeholder={formContent.idPlaceholder}
                       value={formData.id} 
                       onChange={(e) => handleFormChange('id', e.target.value)} 
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium" 
@@ -1036,10 +1198,10 @@ const Asset = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Serial Number <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Serial Number</label>
                     <input
                       type="text"
-                      placeholder="e.g. C02FX123GH67"
+                      placeholder={formContent.serialPlaceholder}
                       value={formData.serial}
                       onChange={(e) => handleFormChange('serial', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
@@ -1053,40 +1215,48 @@ const Asset = () => {
               <div className="bg-white/40 p-6 rounded-2xl border border-white/50 shadow-sm">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-7 h-7 rounded-full bg-[#27619d] text-white flex items-center justify-center text-xs font-bold shadow-md shadow-[#27619d]/20">2</div>
-                  <h3 className="text-sm font-bold text-[#27619d] uppercase tracking-wider font-body">Category & Classification</h3>
+                  <h3 className="text-sm font-bold text-[#27619d] uppercase tracking-wider font-body">
+                    {isAccessoryForm ? 'Accessory Type & Classification' : 'Category & Classification'}
+                  </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Category <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">
+                      {isAccessoryForm ? 'Accessory Type' : 'Category'} <span className="text-red-500">*</span>
+                    </label>
                     <div className="flex gap-2 items-center">
                       <select
                         value={formData.category}
                         onChange={(e) => handleFormChange('category', e.target.value)}
                         className="flex-1 px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
                       >
-                        {dropdownOptions.categories.map((cat) => (
+                        {formCategoryOptions.map((cat) => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCategory(!showAddCategory)}
-                        className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
-                        title="Add Category"
-                      >
-                        <span className="material-symbols-outlined text-base">add</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(formData.category)}
-                        disabled={dropdownOptions.categories.length <= 1}
-                        className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Delete Current Category"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
+                      {!isAccessoryForm && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCategory(!showAddCategory)}
+                            className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
+                            title="Add Category"
+                          >
+                            <span className="material-symbols-outlined text-base">add</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(formData.category)}
+                            disabled={dropdownOptions.categories.length <= 1}
+                            className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Delete Current Category"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </>
+                      )}
                     </div>
-                    {showAddCategory && (
+                    {showAddCategory && !isAccessoryForm && (
                       <div className="mt-3 flex gap-2">
                         <input
                           type="text"
@@ -1137,166 +1307,190 @@ const Asset = () => {
               <div className="bg-white/40 p-6 rounded-2xl border border-white/50 shadow-sm">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-7 h-7 rounded-full bg-[#27619d] text-white flex items-center justify-center text-xs font-bold shadow-md shadow-[#27619d]/20">3</div>
-                  <h3 className="text-sm font-bold text-[#27619d] uppercase tracking-wider font-body">Hardware Specifications</h3>
+                  <h3 className="text-sm font-bold text-[#27619d] uppercase tracking-wider font-body">{formContent.sectionTitle}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Make/Manufacturer</label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.makeLabel}</label>
                     <input
                       type="text"
-                      placeholder="e.g. Apple, Dell, HP"
+                      placeholder={formContent.makePlaceholder}
                       value={formData.make}
                       onChange={(e) => handleFormChange('make', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Model</label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.modelLabel}</label>
                     <input
                       type="text"
-                      placeholder='e.g. MacBook Pro 16"'
+                      placeholder={formContent.modelPlaceholder}
                       value={formData.model}
                       onChange={(e) => handleFormChange('model', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Processor Type and Speed</label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.processorLabel}</label>
                     <input
                       type="text"
-                      placeholder="e.g. Intel i7 2.6GHz"
+                      placeholder={formContent.processorPlaceholder}
                       value={formData.processorType}
                       onChange={(e) => handleFormChange('processorType', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">RAM</label>
-                    <div className="flex gap-2 items-center">
-                      <select
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.ramLabel}</label>
+                    {isAccessoryForm ? (
+                      <input
+                        type="text"
+                        placeholder={formContent.ramPlaceholder}
                         value={formData.ram}
                         onChange={(e) => handleFormChange('ram', e.target.value)}
-                        className="flex-1 px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
-                      >
-                        <option value="">Select RAM</option>
-                        {dropdownOptions.ramOptions.map((ram) => (
-                          <option key={ram} value={ram}>{ram}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddRam(!showAddRam)}
-                        className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
-                        title="Add RAM Option"
-                      >
-                        <span className="material-symbols-outlined text-base">add</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteRam(formData.ram)}
-                        disabled={dropdownOptions.ramOptions.length <= 1 || !formData.ram}
-                        className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Delete Current RAM"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
-                    </div>
-                    {showAddRam && (
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="e.g. 128GB"
-                          value={newRamValue}
-                          onChange={(e) => setNewRamValue(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleAddRam()}
-                          className="flex-1 px-3 py-2 bg-white/80 rounded-lg border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 text-xs outline-none font-body shadow-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddRam}
-                          className="px-4 py-2 bg-[#27619d] text-white rounded-lg hover:opacity-90 text-xs font-bold shadow-sm transition-opacity"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddRam(false);
-                            setNewRamValue('');
-                          }}
-                          className="px-4 py-2 bg-white/80 border border-white/60 text-[#596064] rounded-lg hover:bg-white text-xs font-bold shadow-sm transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={formData.ram}
+                            onChange={(e) => handleFormChange('ram', e.target.value)}
+                            className="flex-1 px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
+                          >
+                            <option value="">Select RAM</option>
+                            {dropdownOptions.ramOptions.map((ram) => (
+                              <option key={ram} value={ram}>{ram}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddRam(!showAddRam)}
+                            className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
+                            title="Add RAM Option"
+                          >
+                            <span className="material-symbols-outlined text-base">add</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRam(formData.ram)}
+                            disabled={dropdownOptions.ramOptions.length <= 1 || !formData.ram}
+                            className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Delete Current RAM"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </div>
+                        {showAddRam && (
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="e.g. 128GB"
+                              value={newRamValue}
+                              onChange={(e) => setNewRamValue(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddRam()}
+                              className="flex-1 px-3 py-2 bg-white/80 rounded-lg border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 text-xs outline-none font-body shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddRam}
+                              className="px-4 py-2 bg-[#27619d] text-white rounded-lg hover:opacity-90 text-xs font-bold shadow-sm transition-opacity"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowAddRam(false);
+                                setNewRamValue('');
+                              }}
+                              className="px-4 py-2 bg-white/80 border border-white/60 text-[#596064] rounded-lg hover:bg-white text-xs font-bold shadow-sm transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Storage Capacity</label>
-                    <div className="flex gap-2 items-center">
-                      <select
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.storageLabel}</label>
+                    {isAccessoryForm ? (
+                      <input
+                        type="text"
+                        placeholder={formContent.storagePlaceholder}
                         value={formData.storageCapacity}
                         onChange={(e) => handleFormChange('storageCapacity', e.target.value)}
-                        className="flex-1 px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
-                      >
-                        <option value="">Select Storage</option>
-                        {dropdownOptions.storageOptions.map((storage) => (
-                          <option key={storage} value={storage}>{storage}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddStorage(!showAddStorage)}
-                        className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
-                        title="Add Storage Option"
-                      >
-                        <span className="material-symbols-outlined text-base">add</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteStorage(formData.storageCapacity)}
-                        disabled={dropdownOptions.storageOptions.length <= 1 || !formData.storageCapacity}
-                        className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Delete Current Storage"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
-                    </div>
-                    {showAddStorage && (
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="e.g. 4TB SSD"
-                          value={newStorageValue}
-                          onChange={(e) => setNewStorageValue(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleAddStorage()}
-                          className="flex-1 px-3 py-2 bg-white/80 rounded-lg border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 text-xs outline-none font-body shadow-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddStorage}
-                          className="px-4 py-2 bg-[#27619d] text-white rounded-lg hover:opacity-90 text-xs font-bold shadow-sm transition-opacity"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddStorage(false);
-                            setNewStorageValue('');
-                          }}
-                          className="px-4 py-2 bg-white/80 border border-white/60 text-[#596064] rounded-lg hover:bg-white text-xs font-bold shadow-sm transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={formData.storageCapacity}
+                            onChange={(e) => handleFormChange('storageCapacity', e.target.value)}
+                            className="flex-1 px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
+                          >
+                            <option value="">Select Storage</option>
+                            {dropdownOptions.storageOptions.map((storage) => (
+                              <option key={storage} value={storage}>{storage}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddStorage(!showAddStorage)}
+                            className="w-10 h-10 flex items-center justify-center bg-[#c7e7ff]/50 text-[#155590] rounded-xl hover:bg-[#c7e7ff] transition-colors border border-white/50 shadow-sm"
+                            title="Add Storage Option"
+                          >
+                            <span className="material-symbols-outlined text-base">add</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStorage(formData.storageCapacity)}
+                            disabled={dropdownOptions.storageOptions.length <= 1 || !formData.storageCapacity}
+                            className="w-10 h-10 flex items-center justify-center bg-[#fa746f]/20 text-[#a83836] rounded-xl hover:bg-[#fa746f]/40 transition-colors border border-white/50 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Delete Current Storage"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </div>
+                        {showAddStorage && (
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="e.g. 4TB SSD"
+                              value={newStorageValue}
+                              onChange={(e) => setNewStorageValue(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddStorage()}
+                              className="flex-1 px-3 py-2 bg-white/80 rounded-lg border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 text-xs outline-none font-body shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddStorage}
+                              className="px-4 py-2 bg-[#27619d] text-white rounded-lg hover:opacity-90 text-xs font-bold shadow-sm transition-opacity"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowAddStorage(false);
+                                setNewStorageValue('');
+                              }}
+                              className="px-4 py-2 bg-white/80 border border-white/60 text-[#596064] rounded-lg hover:bg-white text-xs font-bold shadow-sm transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">Operating System</label>
+                    <label className="text-xs font-bold tracking-wide text-[#596064] mb-2 block font-body uppercase">{formContent.operatingSystemLabel}</label>
                     <input
                       type="text"
-                      placeholder="e.g. Windows 11, macOS"
+                      placeholder={formContent.operatingSystemPlaceholder}
                       value={formData.operatingSystem}
                       onChange={(e) => handleFormChange('operatingSystem', e.target.value)}
                       className="w-full px-4 py-2.5 bg-white/80 rounded-xl border border-white/60 focus:border-[#86b9fb] focus:ring-2 focus:ring-[#86b9fb]/20 transition-all text-sm outline-none font-body text-[#2c3437] shadow-sm font-medium"
@@ -1459,7 +1653,8 @@ const Asset = () => {
                     <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                       <li>First row must contain headers (will be ignored during import)</li>
                       <li>Required columns: Asset ID, Serial Number</li>
-                      <li>Category must be: Laptop, Monitor, Printer, or Phone</li>
+                      <li>Computer categories: Laptop, Monitor, Printer, or Phone</li>
+                      <li>Accessory types: Mouse or Keyboard</li>
                       <li>Status must be: Active, Repair, or Retired</li>
                       <li><strong>Duplicate Asset IDs will be automatically skipped</strong></li>
                       <li>Download the template to see the correct format with current data</li>
