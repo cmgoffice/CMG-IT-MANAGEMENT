@@ -1,0 +1,899 @@
+﻿{
+    "sourceFileName":  "License Software iso.xlsx",
+    "sourceLastWriteTime":  "2026-07-24 17:39:14",
+    "syncedAt":  "2026-08-17 08:13:20",
+    "sheets":  [
+                   {
+                       "name":  "License CMG",
+                       "headerRow":  3,
+                       "prefaceRows":  [
+                                           [
+                                               "ทะเบียนซอฟต์แวร์",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               ""
+                                           ]
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ทะเบียน",
+                                       "ชื่อโปรแกรม",
+                                       "ผู้ถือลายเซ้น",
+                                       "อีเมล",
+                                       "เช่ารายปี",
+                                       "วันที่เริ่ม",
+                                       "สิ้นสุด"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "LC24-02-001",
+                                                       "SketchUP 2021",
+                                                       "ไปร์ท",
+                                                       "sp***@gmail.com",
+                                                       "-",
+                                                       "11/5/2021",
+                                                       "∞"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "LC24-02-002",
+                                                       "Tekla 2020",
+                                                       "BOSS",
+                                                       "no***@gmail.com",
+                                                       "-",
+                                                       "1/1/2020",
+                                                       "∞"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "3",
+                                                       "LC24-02-003",
+                                                       "AutoCAD - including specialized toolsets",
+                                                       "โย",
+                                                       "pe***@gmail.com",
+                                                       "3",
+                                                       "6/21/2021",
+                                                       "6/21/2025"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "LC24-02-004",
+                                                       "AutoCAD LT",
+                                                       "ปลื้ม",
+                                                       "ra***@gmail.com",
+                                                       "1",
+                                                       "3/4/2023",
+                                                       "3/3/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "LC24-02-005",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "โจ้",
+                                                       "si***@gmail.com",
+                                                       "1",
+                                                       "12/6/2023",
+                                                       "11/6/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "LC24-02-006",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "ไปร์ท",
+                                                       "sp***@gmail.com",
+                                                       "1",
+                                                       "3/10/2024",
+                                                       "3/9/2025"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "",
+                                                       "ผู้ควบคุม",
+                                                       "จิรายุ มีทิพย์",
+                                                       "",
+                                                       "",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "License ALL PPE",
+                       "headerRow":  3,
+                       "prefaceRows":  [
+                                           [
+                                               "ทะเบียนซอฟแวร์",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               "",
+                                               ""
+                                           ]
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ทะเบียน",
+                                       "ชื่อโปรแกรม",
+                                       "ผู้ถือลายเซ้น",
+                                       "อีเมล",
+                                       "เช่ารายปี",
+                                       "วันที่เริ่ม",
+                                       "สิ้นสุด"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "LC24-02-001",
+                                                       "Autodesk AEC Collection",
+                                                       "แก้ม",
+                                                       "so***@gmail.com",
+                                                       "1",
+                                                       "9/9/2023",
+                                                       "9/8/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "LC24-02-002",
+                                                       "Autodesk AEC Collection",
+                                                       "เฟียต",
+                                                       "Pa***@gmail.com",
+                                                       "1",
+                                                       "3/10/2024",
+                                                       "3/10/2025"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "3",
+                                                       "LC24-02-003",
+                                                       "AutoCAD - including specialized toolsets",
+                                                       "นิ่ม",
+                                                       "sr***@gmail.com",
+                                                       "3",
+                                                       "4/17/2023",
+                                                       "4/17/2023"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "LC24-02-004",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "",
+                                                       "al***@pproeng.com",
+                                                       "1",
+                                                       "5/12/2023",
+                                                       "4/12/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "LC24-02-005",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "",
+                                                       "wa***@gmail.com",
+                                                       "1",
+                                                       "5/12/2023",
+                                                       "4/12/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "LC24-02-006",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "ว่าง",
+                                                       "",
+                                                       "1",
+                                                       "5/12/2023",
+                                                       "4/12/2024"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "7",
+                                                       "LC24-02-007",
+                                                       "Stadd Pro",
+                                                       "นิ่ม",
+                                                       "pa***@gmail.com",
+                                                       "1",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "8",
+                                                       "LC24-02-008",
+                                                       "SketchUP 2021",
+                                                       "แก้ม",
+                                                       "so***@gmail.com",
+                                                       "1",
+                                                       "4/6/2024",
+                                                       "4/5/2025"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "License",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "รายชื่อโปรแกรม",
+                                       "ซื้อขาด",
+                                       "เช่า 3 ปี",
+                                       "เช่า 2 ปี",
+                                       "เช่า 1 ปี"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "Sketchup",
+                                                       "1",
+                                                       "",
+                                                       "",
+                                                       "1"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "Autodesk AEC Collection",
+                                                       "",
+                                                       "",
+                                                       "",
+                                                       "2"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "3",
+                                                       "AutoCAD FULL",
+                                                       "",
+                                                       "2",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "AutoCAD LT",
+                                                       "",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "",
+                                                       "",
+                                                       "",
+                                                       "5"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "Stadd Pro",
+                                                       "1",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "7",
+                                                       "Tekla",
+                                                       "1",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "Sketchup",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ชื่อโปรแกรม",
+                                       "ลายละเอียด",
+                                       "License",
+                                       "ผู้กำหนดสิทธ์",
+                                       "ผู้ถือลายเซ้น",
+                                       "วันที่เริ่ม",
+                                       "สิ้นสุด",
+                                       "บริษัทใช้งาน",
+                                       "ราคา",
+                                       "บริษัทที่ซื้อ",
+                                       "บริษัทที่ขาย",
+                                       "ผู้ขาย",
+                                       "เบอโทรศัพท์"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "SketchUP",
+                                                       "SketchUP 2021",
+                                                       "1",
+                                                       "ไปร์ท",
+                                                       "ไปร์ท",
+                                                       "11/5/2021",
+                                                       "Lifetime",
+                                                       "CMG",
+                                                       "$ 27,000.00",
+                                                       "P PRO",
+                                                       "Chiangmai Weera Wissawakarn Co., Ltd.",
+                                                       "พิมพาภรณ์ พลพิมพ์",
+                                                       "097 919 8800"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "Autodesk AEC Collection",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ชื่อโปรแกรม",
+                                       "term",
+                                       "ผู้กำหนดสิทธ์",
+                                       "ผู้ถือลายเซ้น",
+                                       "วันที่เริ่ม",
+                                       "สิ้นสุด",
+                                       "บริษัทใช้งาน",
+                                       "ราคา",
+                                       "บริษัทที่ซื้อ",
+                                       "บริษัทที่ขาย",
+                                       "ผู้ขาย",
+                                       "เบอโทรศัพท์",
+                                       "Column 16"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "Autodesk AEC Collection",
+                                                       "1 Year",
+                                                       "sorraya",
+                                                       "so***@gmail.com",
+                                                       "9-Sep-23",
+                                                       "8-Sep-25",
+                                                       "P PRO",
+                                                       "$80,000",
+                                                       "P PRO",
+                                                       "Chiangmai Weera Wissawakarn Co., Ltd.",
+                                                       "พิมพาภรณ์ พลพิมพ์",
+                                                       "097 919 8800",
+                                                       "แก้ม"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "Autodesk AEC Collection",
+                                                       "1 Year",
+                                                       "big",
+                                                       "su***@pproeng.co.th",
+                                                       "10-Mar-2025",
+                                                       "10-Mar-2026",
+                                                       "P PRO",
+                                                       "$80,000",
+                                                       "P PRO",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "in***@synergysoft.co.th",
+                                                       "+6681-547-5888",
+                                                       ""
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "AutoCAD Revit LT Suite (2)",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "No.",
+                                       "Packet",
+                                       "Contract",
+                                       "Subscription ID",
+                                       "term",
+                                       "Manage",
+                                       "User",
+                                       "Start",
+                                       "End",
+                                       "Company",
+                                       "Vender",
+                                       "Sale",
+                                       "Tel."
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "Autodesk AEC",
+                                                       "110005114051",
+                                                       "575-51980613",
+                                                       "3 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "noppadon.ppe@gmail.com",
+                                                       "Jan 05, 2029",
+                                                       "Jan 04, 2029",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "Autodesk AEC",
+                                                       "110005059667",
+                                                       "575-39734857",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "sorraya.pin@gmail.com",
+                                                       "Sep 15, 2025",
+                                                       "Sep 14, 2026",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "3",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110004414482",
+                                                       "574-05333538",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "sittichai.ppe@gmail.com",
+                                                       "Jun 12, 2026",
+                                                       "Jun 11, 2027",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110005014911",
+                                                       "575-31541822",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "alyssara.p@pproeng.co.th",
+                                                       "Jun 16, 2026",
+                                                       "Jun 15, 2027",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110005059649",
+                                                       "575-39732481",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "chotika.p@pproeng.co.th",
+                                                       "Sep 15, 2025",
+                                                       "Sep 14, 2026",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110005107221",
+                                                       "575-50592622",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "srinorakutr.s@gmail.com",
+                                                       "Dec 17, 2025",
+                                                       "Dec 16, 2026",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "7",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110005107221",
+                                                       "575-50592622",
+                                                       "1 Year",
+                                                       "itoffice.cmg@gmail.com",
+                                                       "wannisa.ppe@gmail.com",
+                                                       "Dec 17, 2025",
+                                                       "Dec 16, 2026",
+                                                       "PPE",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "thanaporn@synergysoft.co.th",
+                                                       "+66(0)90-008-6950"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "AUTOCAD FULL",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ชื่อโปรแกรม",
+                                       "term",
+                                       "ผู้กำหนดสิทธ์",
+                                       "ผู้ถือลายเซ้น",
+                                       "วันที่เริ่ม",
+                                       "สิ้นสุด",
+                                       "บริษัทใช้งาน",
+                                       "ราคา",
+                                       "บริษัทที่ซื้อ",
+                                       "บริษัทที่ขาย",
+                                       "ผู้ขาย",
+                                       "เบอโทรศัพท์"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "AutoCAD - including specialized toolsets",
+                                                       "3 Year",
+                                                       "IT-Jirayu",
+                                                       "su***@pproeng.co.th",
+                                                       "21-Jun-22",
+                                                       "17-Apr-26",
+                                                       "P PRO",
+                                                       "$  48,500",
+                                                       "P PRO",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "in***@synergysoft.co.th",
+                                                       "+6681-547-5888"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "AutoCAD Revit LT Suite",
+                       "headerRow":  5,
+                       "prefaceRows":  [
+                                           [
+                                               "ลำดับ",
+                                               "ชื่อโปรแกรม",
+                                               "Contract",
+                                               "Subscription ID",
+                                               "term",
+                                               "ผู้กำหนดสิทธ์",
+                                               "ผู้ถือลายเซ้น",
+                                               "วันที่เริ่ม",
+                                               "สิ้นสุด",
+                                               "บริษัทใช้งาน",
+                                               "ราคา",
+                                               "บริษัทที่ซื้อ",
+                                               "บริษัทที่ขาย",
+                                               "ผู้ขาย",
+                                               "เบอโทรศัพท์",
+                                               "",
+                                               ""
+                                           ],
+                                           [
+                                               "1",
+                                               "AutoCAD Revit LT Suite",
+                                               "110004314814",
+                                               "573-64543157",
+                                               "1 Year",
+                                               "IT-Jirayu",
+                                               "sprite.cmg@gmail.com",
+                                               "3/10/2024",
+                                               "3/9/2025",
+                                               "P PRO",
+                                               "$17,000",
+                                               "P PRO",
+                                               "Synergysoft Solution Co., Ltd.",
+                                               "info@synergysoft.co.th",
+                                               "+6681-547-5888",
+                                               "",
+                                               ""
+                                           ],
+                                           [
+                                               "2",
+                                               "AutoCAD Revit LT Suite",
+                                               "110004414482",
+                                               "574-05333538",
+                                               "1 Year",
+                                               "IT-Jirayu",
+                                               "sittichai.ppe@gmail.com",
+                                               "12/6/2025",
+                                               "12/6/2026",
+                                               "CMG",
+                                               "$17,000",
+                                               "CMG",
+                                               "Synergysoft Solution Co., Ltd.",
+                                               "info@synergysoft.co.th",
+                                               "+6681-547-5888",
+                                               "",
+                                               ""
+                                           ]
+                                       ],
+                       "headers":  [
+                                       "3",
+                                       "AutoCAD Revit LT Suite",
+                                       "110005016762",
+                                       "575-31952982",
+                                       "1 Year",
+                                       "IT-Jirayu",
+                                       "srinorakutr.s@gmail.com",
+                                       "6/19/2025",
+                                       "6/18/2026",
+                                       "P PRO",
+                                       "$13,900",
+                                       "P PRO",
+                                       "Synergysoft Solution Co., Ltd.",
+                                       "thanaporn@synergysoft.co.th",
+                                       "+66(0)90-008-6950",
+                                       "PPE",
+                                       "โน๊ตบุคเครื่องแพน"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110004599453",
+                                                       "574-40609765",
+                                                       "1 Year",
+                                                       "IT-Jirayu",
+                                                       "al***@pproeng.com",
+                                                       "12/5/2024",
+                                                       "4/12/2025",
+                                                       "P PRO",
+                                                       "$13,900",
+                                                       "P PRO",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "th***@synergysoft.co.th",
+                                                       "+66(0)90-008-6950",
+                                                       "แนน",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110004599708",
+                                                       "574-40676774",
+                                                       "1 Year",
+                                                       "IT-Jirayu",
+                                                       "wa***@gmail.com",
+                                                       "12/5/2024",
+                                                       "4/12/2025",
+                                                       "P PRO",
+                                                       "$13,900",
+                                                       "P PRO",
+                                                       "Synergysoft Solution Co., Ltd.",
+                                                       "th***@synergysoft.co.th",
+                                                       "+66(0)90-008-6950",
+                                                       "แพน",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "AutoCAD Revit LT Suite",
+                                                       "110004111581",
+                                                       "",
+                                                       "1 Year",
+                                                       "IT-Jirayu",
+                                                       "ch***@pproeng.co.th",
+                                                       "12/5/2024",
+                                                       "4/12/2025",
+                                                       "P PRO",
+                                                       "$13,900",
+                                                       "P PRO",
+                                                       "Chiangmai Weera Wissawakarn Co., Ltd.",
+                                                       "พิมพาภรณ์ พลพิมพ์",
+                                                       "097 919 8800",
+                                                       "",
+                                                       "แก้ม"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "Window 10 Home",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "ลำดับ",
+                                       "ชื่อโปรแกรม",
+                                       "ลายละเอียด",
+                                       "License",
+                                       "ผู้ถือลายเซ้น",
+                                       "บริษัทใช้งาน",
+                                       "Product ID"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "1",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************GDDV",
+                                                       "CMG-SERVER",
+                                                       "CMG",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "2",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************F397",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "3",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************K8VH",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "4",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************37X7",
+                                                       "",
+                                                       "",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "5",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************XMK7",
+                                                       "ตูน",
+                                                       "CMG",
+                                                       "00326-10032-94324-AA544"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "6",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************QBK7",
+                                                       "โม",
+                                                       "CMG",
+                                                       "00326-10031-23296-AA381"
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "7",
+                                                       "window 10",
+                                                       "HOME",
+                                                       "*************************DKQV",
+                                                       "เกด",
+                                                       "CMG",
+                                                       "00326-10031-23853-AA742"
+                                                   ]
+                                    }
+                                ]
+                   },
+                   {
+                       "name":  "STADD PRO",
+                       "headerRow":  2,
+                       "prefaceRows":  [
+
+                                       ],
+                       "headers":  [
+                                       "#UNKNOWN!",
+                                       "#UNKNOWN!"
+                                   ],
+                       "rows":  [
+                                    {
+                                        "values":  [
+                                                       "Email",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "pa***@gmail.com",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "Pass",
+                                                       ""
+                                                   ]
+                                    },
+                                    {
+                                        "values":  [
+                                                       "IT2024cmg",
+                                                       ""
+                                                   ]
+                                    }
+                                ]
+                   }
+               ]
+}

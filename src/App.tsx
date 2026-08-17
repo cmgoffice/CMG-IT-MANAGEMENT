@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Asset from './pages/Asset';
+import License from './pages/License';
 import Equipment from './pages/Equipment';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
@@ -44,6 +45,7 @@ function App() {
             {/* Public (Anonymous read-only) Routes */}
             <Route index element={<Dashboard />} />
             <Route path="asset" element={<Asset />} />
+            <Route path="license" element={<License />} />
             <Route path="equipment" element={<Equipment />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
