@@ -1,0 +1,194 @@
+{
+  "sourceFileName": "ทะเบียน Office 365 CMG.xlsx",
+  "generatedAt": "2026-08-18T00:00:00.000Z",
+  "primaryUsers": [
+    {
+      "id": "office365-row-4",
+      "row": 4,
+      "name": "นางสาวกนกวรรณ ชุณหชนโชติ (KC)",
+      "email": "krachao.cmg@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2027-02-19",
+      "remainingDays": "",
+      "keyValue": "",
+      "packet": "MS 365 Family",
+      "color": "14083324"
+    },
+    {
+      "id": "office365-row-5",
+      "row": 5,
+      "name": "นางสาวปาริชาติ  เกิดมณี (PA)",
+      "email": "parichart.ppe@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2027-02-21",
+      "remainingDays": "",
+      "keyValue": "",
+      "packet": "MS 365 Family",
+      "color": "13431551"
+    },
+    {
+      "id": "office365-row-6",
+      "row": 6,
+      "name": "นางสาวภคมน คีรีโชติ",
+      "email": "kadmanee.cmg@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2026-08-31",
+      "remainingDays": "",
+      "keyValue": "DXYPF-H272G-YYF3J-WJP4Q-PPM3Z",
+      "packet": "MS 365 Family",
+      "color": "14348258"
+    },
+    {
+      "id": "office365-row-7",
+      "row": 7,
+      "name": "นางสาวฐิติพร ศรีราธารา (TOON)",
+      "email": "thitiporn.cmg@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2026-08-31",
+      "remainingDays": "",
+      "keyValue": "G6CRD-WTHPM-CT2KH-D7KDD-3TJTZ",
+      "packet": "MS 365 Family",
+      "color": "15058672"
+    },
+    {
+      "id": "office365-row-8",
+      "row": 8,
+      "name": "นางศรีพรรณ  คุมพล (SRI)",
+      "email": "sripun.cmg@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2026-08-31",
+      "remainingDays": "",
+      "keyValue": "J9QPP-RF4KT-G4TYV-WGCYF-K2PXZ",
+      "packet": "MS 365 Family",
+      "color": "11719676"
+    },
+    {
+      "id": "office365-row-9",
+      "row": 9,
+      "name": "นายจิระพงษ์ สนสาย (CAMP)",
+      "email": "jirapong.sonsai@hotmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2026-08-31",
+      "remainingDays": "",
+      "keyValue": "3T3WJ-7QTWG-YT3R2-KPXFT-4QJ7Z",
+      "packet": "MS 365 Family",
+      "color": "16441012"
+    },
+    {
+      "id": "office365-row-10",
+      "row": 10,
+      "name": "นางสาวสุกัญญา บัวบุตร",
+      "email": "sukanya.cmg@gmail.com",
+      "totalUsers": "",
+      "remainingUsers": "",
+      "price": "",
+      "storage": "",
+      "startDate": "",
+      "endDate": "2026-08-31",
+      "remainingDays": "",
+      "keyValue": "G6CRD-WTHPM-CT2KH-D7KDD-3TJTZ",
+      "packet": "MS 365 Family",
+      "color": "13553360"
+    }
+  ],
+  "groups": [
+    {
+      "color": "14083324",
+      "members": [
+        { "name": "นายนพดล พินิจผล", "email": "noppadon.cmg@gmail.com" },
+        { "name": "นายนพดล พินิจผล", "email": "noppadon.ppe@gmail.com" },
+        { "name": "นางสาวเสาวลักษณ์ พินิจผล", "email": "saowalux.ppe@gmail.com" },
+        { "name": "นางสาวกนกวรรณ ชุณหชนโชติ (KC)", "email": "krachao.cmg@gmail.com" },
+        { "name": "นายสมชาย ภัทรทิพากร", "email": "somchai.pat@gmail.com" },
+        { "name": "Backupdata CMG", "email": "backupdata.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "13431551",
+      "members": [
+        { "name": "นางเสาวลักษณ์ พินิจผล", "email": "saowalux.cmg@gmail.com" },
+        { "name": "นางสาวปาริชาติ  เกิดมณี (PA)", "email": "parichart.ppe@gmail.com" },
+        { "name": "นายพีระศักดิ์ ต่ำคำดี", "email": "peerasak.cmg@gmail.com" },
+        { "name": "นายธีรัตน์ ปุกจินะ", "email": "nahmo.cmg@gmail.com" },
+        { "name": "นางสาวณัฐรดา อ่อนคำตัน", "email": "nutrada.2520@gmail.com" },
+        { "name": "นายเอนก ขัดฝั้น", "email": "nong.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "14348258",
+      "members": [
+        { "name": "นางสาวภคมน คีรีโชติ", "email": "kadmanee.cmg@gmail.com" },
+        { "name": "นางสาวสร้อยทิพย์ ชุณหชนโชติ (SOY)", "email": "soytip.cmg@gmail.com" },
+        { "name": "นายฐิติวัสส์ คริสตไทย", "email": "thitiwat.cmg@hotmail.com" },
+        { "name": "นางสาวณัทภัค บัวน้ำใส", "email": "gib.nattapak.cmg@gmail.com" },
+        { "name": "นางสาววรรณกานต์ บุญธาราม (นุ่น)", "email": "wannakarn.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "15058672",
+      "members": [
+        { "name": "นางสาวฐิติพร ศรีราธารา (TOON)", "email": "thitiporn.cmg@gmail.com" },
+        { "name": "Bidding CMG", "email": "biddingdata.cmg@gmail.com" },
+        { "name": "อริสรา", "email": "ausapiraya.cmg@gmail.com" },
+        { "name": "Headoffice CMG", "email": "headofficedata.cmg@gmail.com" },
+        { "name": "น้องฝึกงาน Procurement", "email": "studentpc.cmg@gmail.com" },
+        { "name": "น้องฝึกงาน Procurement", "email": "studentpc1.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "16441012",
+      "members": [
+        { "name": "นายจิระพงษ์ สนสาย (CAMP)", "email": "jirapong.sonsai@hotmail.com" },
+        { "name": "นายสมเกียรติ นำพา", "email": "somkiat.cmg@gmail.com" },
+        { "name": "วรรณิสา", "email": "wannisa.ppe@gmail.com" },
+        { "name": "วารินทร์ ศรีภิรมย์", "email": "warin2336.cmg@gmail.com" },
+        { "name": "นางเมทินี สนธิสุข", "email": "safetymiw.cmg@gmail.com" },
+        { "name": "นางสาวกฤติยา วงษ์ไพศาล", "email": "kittiya.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "11719676",
+      "members": [
+        { "name": "นางศรีพรรณ  คุมพล (SRI)", "email": "sripun.cmg@gmail.com" },
+        { "name": "นายสุชาติ คุมพล", "email": "suchart.cmg@gmail.com" },
+        { "name": "นายจิระทิปต์ ชูเชิด", "email": "nop.cmg@gmail.com" },
+        { "name": "นางสาวสุรารักษ์ รักษาทรัพย์", "email": "surarak.cmg@gmail.com" },
+        { "name": "นางทัศนีย์ พินิจผล", "email": "ptan2513.cmg@gmail.com" },
+        { "name": "กนกวรรณ  แก่นทิพย์", "email": "Kanokwan.k.cmg@gmail.com" }
+      ]
+    },
+    {
+      "color": "13553360",
+      "members": [
+        { "name": "สุกัญญา บัวบุตร", "email": "sukanya.cmg@gmail.com" },
+        { "name": "ปัฐวี ศรีจันทร์", "email": "pattavee.cmg@gmail.com" },
+        { "name": "ปวีณา ฝาบุตร", "email": "paweena.cmg@gmail.com" },
+        { "name": "ณัฐรดา อ่อนคำตัน", "email": "natarada.cmg@gmail.com" }
+      ]
+    }
+  ]
+}
