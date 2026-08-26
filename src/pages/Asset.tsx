@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
 import { useAuth, type UserProfile } from '../contexts/AuthContext';
@@ -66,6 +66,30 @@ type AssetFormState = {
   warrantyExpiryDate: string;
   remark: string;
   healthScore: string;
+};
+
+type AssetRequestRecord = {
+  id: string;
+  applicantName?: string;
+  status?: string;
+  docNo?: string;
+  wrNumber?: string;
+  assetId?: string;
+  serialNumber?: string;
+  changeSn?: string;
+  reason?: string;
+  createdAt?: unknown;
+  reqType_new?: string | boolean | null;
+  reqType_change?: string | boolean | null;
+};
+
+type PendingAssetApproval = {
+  requestId: string;
+  serial: string;
+  applicantName: string;
+  docNo: string;
+  reason: string;
+  createdAtMs: number;
 };
 
 type DropdownOptions = {
@@ -228,6 +252,31 @@ const defaultDropdownOptions: DropdownOptions = {
   storageOptions: ['128GB SSD', '256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD', '1TB HDD', '2TB HDD'],
 };
 
+const normalizeText = (value: string | null | undefined) => value?.trim().toLowerCase() ?? '';
+
+const isTruthyRequestFlag = (value: string | boolean | null | undefined) => {
+  if (typeof value === 'boolean') return value;
+  return String(value || '').trim().toLowerCase() === 'true';
+};
+
+const getTimestampMillis = (value: unknown) => {
+  if (value && typeof value === 'object' && 'toMillis' in value && typeof (value as { toMillis?: unknown }).toMillis === 'function') {
+    return ((value as { toMillis: () => number }).toMillis() || 0);
+  }
+
+  if (typeof value === 'string') {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+};
+
+const isVacantUser = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  return normalized === '' || normalized === 'unassigned' || normalized === 'ไม่มีผู้ใช้' || normalized === 'ว่าง';
+};
+
 const defaultForm: AssetFormState = {
   id: '',
   serial: '',
@@ -269,6 +318,8 @@ const Asset = () => {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOptions>(defaultDropdownOptions);
   const [usersList, setUsersList] = useState<Array<{ email: string; name: string; photoURL?: string }>>([]);
+  const [assetRequests, setAssetRequests] = useState<AssetRequestRecord[]>([]);
+  const [approvingRequestId, setApprovingRequestId] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddRam, setShowAddRam] = useState(false);
   const [showAddStorage, setShowAddStorage] = useState(false);
@@ -299,6 +350,47 @@ const Asset = () => {
     return Array.from(cats).sort();
   }, [assets, dropdownOptions.categories]);
 
+  const getPendingApprovalForAsset = (asset: AssetItem) =>
+    pendingApprovalsByLookup.get(normalizeText(asset.id)) ??
+    pendingApprovalsByLookup.get(normalizeText(asset.serial)) ??
+    null;
+
+  const pendingApprovalsByLookup = useMemo(() => {
+    const latestByLookup = new Map<string, PendingAssetApproval>();
+
+    assetRequests.forEach((record) => {
+      const status = normalizeText(record.status);
+      if (status !== 'pending') return;
+      if (!isTruthyRequestFlag(record.reqType_new)) return;
+
+      const assetId = String(record.assetId || '').trim();
+      const serial = String(record.changeSn || record.serialNumber || '').trim();
+      const applicantName = String(record.applicantName || '').trim();
+      if ((!assetId && !serial) || !applicantName) return;
+
+      const nextItem: PendingAssetApproval = {
+        requestId: record.id,
+        serial,
+        applicantName,
+        docNo: String(record.docNo || record.wrNumber || record.id).trim(),
+        reason: String(record.reason || '').trim(),
+        createdAtMs: getTimestampMillis(record.createdAt),
+      };
+
+      [assetId, serial]
+        .map((value) => normalizeText(value))
+        .filter(Boolean)
+        .forEach((lookupKey) => {
+          const currentItem = latestByLookup.get(lookupKey);
+          if (!currentItem || nextItem.createdAtMs >= currentItem.createdAtMs) {
+            latestByLookup.set(lookupKey, nextItem);
+          }
+        });
+    });
+
+    return latestByLookup;
+  }, [assetRequests]);
+
   const isAccessoryForm = accessoryCategories.has(formData.category);
   const formContent = getAssetFormContent(formData.category);
   const accessoryFilterValue = accessoryType;
@@ -311,13 +403,16 @@ const Asset = () => {
   const filtered = useMemo(
     () =>
       assets.filter((a) => {
+        const pendingApproval = getPendingApprovalForAsset(a);
+        const effectiveUserName = isVacantUser(a.user) && pendingApproval ? pendingApproval.applicantName : a.user ?? '';
         const q = search.trim().toLowerCase();
         const matchSearch =
           q.length === 0 ||
           a.name.toLowerCase().includes(q) ||
           a.serial.toLowerCase().includes(q) ||
           a.id.toLowerCase().includes(q) ||
-          (a.user ?? '').toLowerCase().includes(q);
+          effectiveUserName.toLowerCase().includes(q) ||
+          (pendingApproval?.applicantName.toLowerCase() ?? '').includes(q);
         const assetSection = getAssetSection(a.category, a.assetSection);
         const matchCategory =
           activeFilterSource === 'accessory'
@@ -326,7 +421,7 @@ const Asset = () => {
         const matchStatus = status === 'All Statuses' || a.status === status;
         return matchSearch && matchCategory && matchStatus;
       }),
-    [assets, search, activeFilterSource, category, accessoryType, status],
+    [assets, search, activeFilterSource, category, accessoryType, status, pendingApprovalsByLookup],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -348,6 +443,19 @@ const Asset = () => {
 
   useEffect(() => {
     loadAssets();
+  }, []);
+
+  useEffect(() => {
+    const assetRequestsRef = collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assetRequests');
+    const unsubscribe = onSnapshot(assetRequestsRef, (snapshot) => {
+      const rows = snapshot.docs.map((requestDoc) => ({
+        id: requestDoc.id,
+        ...(requestDoc.data() as Omit<AssetRequestRecord, 'id'>),
+      }));
+      setAssetRequests(rows);
+    });
+
+    return unsubscribe;
   }, []);
 
   const loadUsers = async () => {
@@ -623,6 +731,56 @@ const Asset = () => {
       setSelectedAsset(null);
       await loadAssets();
     });
+  };
+
+  const handleApproveAssetRequest = async (asset: AssetItem, pendingApproval: PendingAssetApproval) => {
+    if (!isMasterAdmin || approvingRequestId || !isVacantUser(asset.user)) return;
+
+    const matchedUser = usersList.find((user) => normalizeText(user.name) === normalizeText(pendingApproval.applicantName));
+    const previousUser = asset.user?.trim() || '';
+    const now = new Date();
+    const historyEntry: AssetHistory = {
+      date: now.toLocaleString('sv-SE').replace('T', ' '),
+      action: previousUser ? 'Reassigned' : 'Assigned',
+      detail: previousUser
+        ? `Approved FM-IT-003 ${pendingApproval.docNo}: reassigned from ${previousUser} to ${pendingApproval.applicantName} | Serial: ${asset.serial}`
+        : `Approved FM-IT-003 ${pendingApproval.docNo}: assigned to ${pendingApproval.applicantName} | Serial: ${asset.serial}`,
+    };
+
+    const { docId, id, ...assetData } = asset;
+    const updatedPayload: AssetPayload = {
+      ...assetData,
+      user: pendingApproval.applicantName,
+      userAvatar: matchedUser?.photoURL ?? null,
+      history: [historyEntry, ...(asset.history ?? [])],
+      requestedAssetId: id,
+    };
+
+    setApprovingRequestId(pendingApproval.requestId);
+    try {
+      await Promise.all([
+        setDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assets', docId || id), updatedPayload),
+        setDoc(
+          doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'assetRequests', pendingApproval.requestId),
+          {
+            status: 'approved',
+            approvedAt: now.toISOString(),
+            approvedBy: {
+              name: userProfile ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || userProfile.email : 'System',
+              email: userProfile?.email || '',
+            },
+          },
+          { merge: true },
+        ),
+      ]);
+
+      await loadAssets();
+    } catch (error) {
+      console.error('Failed to approve asset request from Asset page:', error);
+      alert('ไม่สามารถอนุมัติคำขอจากหน้า Asset ได้');
+    } finally {
+      setApprovingRequestId('');
+    }
   };
 
   const downloadTemplate = () => {
@@ -1024,7 +1182,17 @@ const Asset = () => {
                     </td>
                   </tr>
                 )}
-                {paginatedAssets.map((asset) => (
+                {paginatedAssets.map((asset) => {
+                  const pendingApproval = getPendingApprovalForAsset(asset);
+                  const hasAssignedUser = !isVacantUser(asset.user);
+                  const canApprovePending = Boolean(pendingApproval) && !hasAssignedUser;
+                  const approvablePending = canApprovePending ? pendingApproval : null;
+                  const displayedUserName = hasAssignedUser ? (asset.user ?? '') : (pendingApproval?.applicantName || '');
+                  const displayedUserAvatar = hasAssignedUser
+                    ? asset.userAvatar
+                    : usersList.find((user) => normalizeText(user.name) === normalizeText(pendingApproval?.applicantName))?.photoURL ?? null;
+
+                  return (
                   <tr key={asset.docId} className="group hover:bg-white/60 transition-colors">
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
@@ -1054,26 +1222,42 @@ const Asset = () => {
                     </td>
                     <td className="px-6 py-5 font-mono text-sm text-[#596064]">{asset.serial}</td>
                     <td className="px-6 py-5">
-                      {asset.user ? (
+                      {displayedUserName ? (
                         <div className="flex items-center gap-2">
-                          {asset.userAvatar ? (
+                          {displayedUserAvatar ? (
                             <img 
-                              alt={asset.user} 
+                              alt={displayedUserName} 
                               className="w-10 h-10 rounded-full border border-white shadow-sm object-cover" 
-                              src={asset.userAvatar} 
+                              src={displayedUserAvatar} 
                               onError={(e) => {
-                                console.log('Avatar load failed for', asset.user, 'url:', asset.userAvatar);
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(asset.user || '')}&background=c7e7ff&color=27619d&size=40`;
+                                console.log('Avatar load failed for', displayedUserName, 'url:', displayedUserAvatar);
+                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayedUserName || '')}&background=c7e7ff&color=27619d&size=40`;
                               }}
                             />
                           ) : (
                             <img 
-                              alt={asset.user} 
+                              alt={displayedUserName} 
                               className="w-10 h-10 rounded-full border border-white shadow-sm object-cover" 
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(asset.user || '')}&background=c7e7ff&color=27619d&size=40`} 
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayedUserName || '')}&background=c7e7ff&color=27619d&size=40`} 
                             />
                           )}
-                          <span className="text-sm font-medium font-body whitespace-nowrap">{asset.user}</span>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium font-body whitespace-nowrap">{displayedUserName}</span>
+                            {pendingApproval ? (
+                              <span
+                                className={`mt-1 inline-flex w-fit items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                                  hasAssignedUser
+                                    ? 'bg-[#fee2e2] text-[#b91c1c]'
+                                    : 'bg-[#ffedd5] text-[#c2410c]'
+                                }`}
+                              >
+                                <span className={`h-2 w-2 rounded-full ${hasAssignedUser ? 'bg-[#dc2626]' : 'bg-[#f59e0b]'}`} />
+                                {hasAssignedUser
+                                  ? `รออนุมัติ ${pendingApproval.applicantName}`
+                                  : `รออนุมัติ ${pendingApproval.docNo}`}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-xs italic text-[#747c80] font-body">Unassigned</span>
@@ -1086,7 +1270,17 @@ const Asset = () => {
                     </td>
                     <td className="px-6 py-5 text-right">
                       {isMasterAdmin && (
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className={`flex justify-end gap-2 transition-opacity ${canApprovePending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          {approvablePending ? (
+                            <button
+                              onClick={() => void handleApproveAssetRequest(asset, approvablePending)}
+                              disabled={approvingRequestId === approvablePending.requestId}
+                              className="rounded-full bg-[#27619d] px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-[#1f4f80] disabled:cursor-not-allowed disabled:opacity-60"
+                              title={`Approve ${approvablePending.applicantName} from ${approvablePending.docNo}`}
+                            >
+                              {approvingRequestId === approvablePending.requestId ? 'Approving...' : 'Approve IT03'}
+                            </button>
+                          ) : null}
                           <button onClick={() => openHistoryModal(asset)} className="p-2 text-[#27619d] hover:bg-blue-100 rounded-lg transition-colors" title="View History">
                             <span className="material-symbols-outlined text-sm">history</span>
                           </button>
@@ -1100,7 +1294,7 @@ const Asset = () => {
                       )}
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
