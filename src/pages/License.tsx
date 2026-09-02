@@ -1319,19 +1319,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                         return (
                           <tr
                             key={item.id}
-                            className={`border-t border-white/40 transition-colors ${
+                            onClick={() => handleSelectOfficeUser(item.id)}
+                            className={`cursor-pointer border-t border-white/40 transition-colors ${
                               isActive ? 'bg-[#e8f5ff]/90' : status.rowClassName || 'hover:bg-white/50'
                             }`}
                           >
-                            <td className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold text-inherit">
-                              <button
-                                type="button"
-                                onClick={() => handleSelectOfficeUser(item.id)}
-                                className="text-left text-inherit underline-offset-2 transition-opacity hover:opacity-80 hover:underline"
-                              >
-                                {item.name || '-'}
-                              </button>
-                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold text-inherit">{item.name || '-'}</td>
                             <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{item.email || '-'}</td>
                             <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{item.packet || '-'}</td>
                             <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{item.keyValue || '-'}</td>
@@ -1342,7 +1335,10 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                                 <div className="flex items-center gap-1">
                                   <button
                                     type="button"
-                                    onClick={() => openRenewOfficeLicenseModal(item)}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openRenewOfficeLicenseModal(item);
+                                    }}
                                     className="rounded-full border border-[#f4c777] bg-[#fff4dc] px-3 py-1 text-[11px] font-bold text-[#9a6400] transition-colors hover:bg-[#ffefc9]"
                                     title="Renew License"
                                   >
@@ -1350,7 +1346,10 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => openEditOfficeLicenseModal(item)}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openEditOfficeLicenseModal(item);
+                                    }}
                                     className="rounded-lg p-2 text-amber-600 transition-colors hover:bg-amber-100"
                                     title="Edit License"
                                   >
@@ -1358,7 +1357,10 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => openDeleteOfficeLicenseModal(item)}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openDeleteOfficeLicenseModal(item);
+                                    }}
                                     className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-100"
                                     title="Delete License"
                                   >
