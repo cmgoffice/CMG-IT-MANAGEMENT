@@ -48,6 +48,7 @@ const FORM_NUMBER_FIELDS: Record<string, NumberFieldKey[]> = {
   'FM-IT-005': ['wrNumber', 'docNo'],
   'FM-IT-006': ['wrNumber', 'docNo'],
   'FM-IT-007': ['wrNumber', 'docNo'],
+  'FM-IT-008': ['wrNumber', 'docNo'],
 };
 
 const getPreferredNumberFields = (formCode: string): NumberFieldKey[] =>

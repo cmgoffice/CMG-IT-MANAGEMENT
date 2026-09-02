@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ISOAuditReport } from '../components/ISOAuditReport';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +48,18 @@ type HistoryEntry = {
   detail: string;
 };
 
+type ITReviewRecord = {
+  id: string;
+  applicantName?: string;
+  department?: string;
+  rating?: number | string;
+  reviewComment?: string;
+  reviewDate?: string;
+  requestDate?: string;
+  reviewedAt?: Timestamp;
+  createdAt?: Timestamp;
+};
+
 const assetStatusColor: Record<string, string> = {
   'Active': 'bg-secondary-container text-on-secondary-container',
   'Repair': 'bg-error-container text-error',
@@ -88,6 +100,64 @@ const getScoreLabel = (pct: number) => {
   if (pct >= 60) return { label: 'ดี', color: 'text-[#27619d]' };
   if (pct >= 40) return { label: 'พอใช้', color: 'text-amber-600' };
   return { label: 'ต้องปรับปรุง', color: 'text-rose-600' };
+};
+
+const parseUnknownDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Timestamp) return value.toDate();
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
+const getMonthKeyFromDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const getMonthKeyFromValue = (value: unknown) => {
+  const parsedDate = parseUnknownDate(value);
+  return parsedDate ? getMonthKeyFromDate(parsedDate) : '';
+};
+
+const formatMonthLabel = (monthKey: string) => {
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey || '-';
+
+  return new Date(year, month - 1, 1).toLocaleDateString('th-TH', {
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
+const formatReviewDate = (value: unknown) => {
+  const parsedDate = parseUnknownDate(value);
+  if (!parsedDate) return '-';
+
+  return parsedDate.toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const getReviewMonthKey = (record: ITReviewRecord) =>
+  getMonthKeyFromValue(record.reviewDate)
+  || getMonthKeyFromValue(record.requestDate)
+  || getMonthKeyFromValue(record.reviewedAt)
+  || getMonthKeyFromValue(record.createdAt);
+
+const getReviewTimestamp = (record: ITReviewRecord) =>
+  parseUnknownDate(record.reviewDate)?.getTime()
+  || parseUnknownDate(record.requestDate)?.getTime()
+  || parseUnknownDate(record.reviewedAt)?.getTime()
+  || parseUnknownDate(record.createdAt)?.getTime()
+  || 0;
+
+const getReviewRating = (value: unknown) => {
+  const numericValue = typeof value === 'number' ? value : Number(value || 0);
+  if (Number.isNaN(numericValue)) return 0;
+  return Math.max(0, Math.min(5, numericValue));
 };
 
 // Animated bar component
@@ -132,9 +202,13 @@ const Dashboard = () => {
   const [activeUsers, setActiveUsers] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentHistory, setRecentHistory] = useState<HistoryEntry[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(true);
+  const [reviewRecords, setReviewRecords] = useState<ITReviewRecord[]>([]);
+  const [selectedReviewMonth, setSelectedReviewMonth] = useState('');
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const currentReviewMonthKey = getMonthKeyFromDate(new Date());
 
   const exportToPDF = async () => {
     if (!reportRef.current) {
@@ -166,6 +240,7 @@ const Dashboard = () => {
   useEffect(() => {
     loadKpiData();
     loadDashboardStats();
+    loadReviewData();
   }, []);
 
   const loadDashboardStats = async () => {
@@ -274,9 +349,67 @@ const Dashboard = () => {
     }
   };
 
+  const loadReviewData = async () => {
+    try {
+      setReviewLoading(true);
+      const reviewsSnap = await getDocs(collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, 'itReviews'));
+      const reviews = reviewsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<ITReviewRecord, 'id'>),
+      }));
+
+      reviews.sort((left, right) => getReviewTimestamp(right) - getReviewTimestamp(left));
+      setReviewRecords(reviews);
+    } catch (error) {
+      console.error('Error loading IT reviews:', error);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   const displayedKpis = kpiFilter === 'evaluated'
     ? kpiData.filter((k) => k.evalCount > 0)
     : kpiData;
+
+  const availableReviewMonths = useMemo(
+    () =>
+      Array.from(new Set(reviewRecords.map((record) => getReviewMonthKey(record)).filter(Boolean))).sort((left, right) =>
+        right.localeCompare(left),
+      ),
+    [reviewRecords],
+  );
+
+  useEffect(() => {
+    if (!availableReviewMonths.length) {
+      setSelectedReviewMonth(currentReviewMonthKey);
+      return;
+    }
+
+    if (availableReviewMonths.includes(currentReviewMonthKey)) {
+      if (!selectedReviewMonth || !availableReviewMonths.includes(selectedReviewMonth)) {
+        setSelectedReviewMonth(currentReviewMonthKey);
+      }
+      return;
+    }
+
+    if (!selectedReviewMonth || !availableReviewMonths.includes(selectedReviewMonth)) {
+      setSelectedReviewMonth(availableReviewMonths[0]);
+    }
+  }, [availableReviewMonths, currentReviewMonthKey, selectedReviewMonth]);
+
+  const monthlyReviews = useMemo(
+    () => reviewRecords.filter((record) => getReviewMonthKey(record) === selectedReviewMonth),
+    [reviewRecords, selectedReviewMonth],
+  );
+
+  const monthlyReviewTotal = monthlyReviews.reduce((sum, record) => sum + getReviewRating(record.rating), 0);
+  const monthlyReviewCount = monthlyReviews.length;
+  const monthlyReviewAverage = monthlyReviewCount > 0 ? monthlyReviewTotal / monthlyReviewCount : 0;
+  const monthlyReviewPercent = monthlyReviewCount > 0 ? Math.round((monthlyReviewTotal / (monthlyReviewCount * 5)) * 100) : 0;
+  const monthlyReviewScoreInfo = monthlyReviewCount > 0
+    ? getScoreLabel(monthlyReviewPercent)
+    : { label: 'ยังไม่มีรีวิว', color: 'text-slate-500' };
+  const selectedReviewMonthLabel = formatMonthLabel(selectedReviewMonth || currentReviewMonthKey);
 
   return (
     <div className="p-8 max-w-[95%] mx-auto">
@@ -562,6 +695,145 @@ const Dashboard = () => {
                       <span className="text-[11px] font-medium text-on-surface-variant">{item.label}</span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="mb-1 text-3xl font-bold text-on-surface">Monthly Reviews</h2>
+            <p className="text-base text-on-surface-variant font-body">
+              แสดงรีวิวเฉพาะเดือนที่เลือก และคำนวณคะแนนจากสูตร คะแนนรวม / (จำนวนรีวิว x 5) x 100
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-white/40 bg-white/60 px-4 py-2.5 shadow-sm backdrop-blur-md">
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">Month</label>
+              <select
+                value={selectedReviewMonth}
+                onChange={(event) => setSelectedReviewMonth(event.target.value)}
+                className="bg-transparent text-base font-bold text-on-surface outline-none"
+              >
+                {(availableReviewMonths.length ? availableReviewMonths : [currentReviewMonthKey]).map((monthKey) => (
+                  <option key={monthKey} value={monthKey}>
+                    {formatMonthLabel(monthKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="space-y-4 xl:col-span-1">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#7c3aed] via-[#2563eb] to-[#0f766e] p-7 text-white shadow-lg">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/30"></div>
+                <div className="absolute -bottom-10 -left-10 h-52 w-52 rounded-full bg-white/10"></div>
+              </div>
+              <div className="relative z-10">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[24px]">reviews</span>
+                  <span className="text-xl font-extrabold">{selectedReviewMonthLabel}</span>
+                </div>
+                <div className="text-6xl font-extrabold tracking-tight">{reviewLoading ? '—' : `${monthlyReviewPercent}%`}</div>
+                <div className="mt-2 text-base font-medium text-white/80">คะแนนรีวิวเฉลี่ยของเดือนนี้</div>
+                <div className="mt-6 flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-white/70">Average Score</div>
+                    <div className="text-2xl font-extrabold">{monthlyReviewAverage.toFixed(1)}/5</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-bold uppercase tracking-wider text-white/70">Reviews</div>
+                    <div className="text-2xl font-extrabold">{monthlyReviewCount}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm backdrop-blur-md">
+              <h3 className="mb-4 text-base font-extrabold uppercase tracking-wider text-on-surface">Review Summary</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-on-surface-variant">คะแนนเฉลี่ยเป็นเปอร์เซ็นต์</span>
+                    <span className={`text-base font-extrabold ${monthlyReviewScoreInfo.color}`}>{monthlyReviewPercent}%</span>
+                  </div>
+                  <AnimatedBar percent={monthlyReviewPercent} gradient={getScoreGradient(monthlyReviewPercent)} />
+                </div>
+
+                <div className="flex items-center justify-between border-t border-white/30 pt-4">
+                  <span className="text-sm font-medium text-on-surface-variant">ระดับคะแนน</span>
+                  <span className={`text-base font-extrabold ${monthlyReviewScoreInfo.color}`}>{monthlyReviewScoreInfo.label}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-on-surface-variant">จำนวนรีวิวของเดือน</span>
+                  <span className="text-base font-extrabold text-on-surface">{monthlyReviewCount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-white/40 bg-white/40 shadow-sm backdrop-blur-md xl:col-span-2">
+            <div className="flex items-center justify-between border-b border-white/30 px-7 py-5">
+              <div>
+                <h3 className="text-lg font-extrabold text-on-surface">Review List</h3>
+                <p className="text-sm text-on-surface-variant">{selectedReviewMonthLabel}</p>
+              </div>
+              <span className="rounded-full border border-white/40 bg-white/50 px-3 py-1.5 text-sm font-bold text-on-surface-variant">
+                {monthlyReviewCount} reviews
+              </span>
+            </div>
+
+            <div className="max-h-[420px] overflow-y-auto p-4 custom-scrollbar">
+              {reviewLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="mb-4 inline-block h-10 w-10 animate-spin rounded-full border-b-2 border-primary"></div>
+                    <p className="text-sm text-on-surface-variant font-body">กำลังโหลดรีวิว...</p>
+                  </div>
+                </div>
+              ) : monthlyReviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <span className="material-symbols-outlined mb-3 text-5xl text-outline-variant">forum</span>
+                  <p className="text-sm font-bold text-on-surface-variant">ยังไม่มีรีวิวในเดือนนี้</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {monthlyReviews.map((review) => {
+                    const ratingValue = getReviewRating(review.rating);
+
+                    return (
+                      <div key={review.id} className="rounded-2xl border border-white/40 bg-white/55 p-4 shadow-sm">
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-on-surface-variant">
+                              {formatReviewDate(review.reviewDate || review.requestDate || review.reviewedAt || review.createdAt)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-2 text-amber-700">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                              <span
+                                key={`${review.id}-star-${index}`}
+                                className={`material-symbols-outlined text-[18px] ${index < ratingValue ? 'text-amber-500' : 'text-slate-300'}`}
+                                style={{ fontVariationSettings: "'FILL' 1" }}
+                              >
+                                star
+                              </span>
+                            ))}
+                            <span className="ml-1 text-sm font-bold">{ratingValue}/5</span>
+                          </div>
+                        </div>
+
+                        <p className="text-base leading-8 text-on-surface-variant">{review.reviewComment || '-'}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

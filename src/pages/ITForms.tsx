@@ -13,6 +13,7 @@ const defaultForms = [
   { id: "FM-IT-005", title: "License Request", desc: "Submit requests for software license renewals, upgrades, and extensions.", icon: "workspace_premium", path: "/forms/005", status: "Active" },
   { id: "FM-IT-006", title: "Data Access Request", desc: "Form for requesting access to specific company data sources or internal servers.", icon: "lock_open", path: "/forms/006", status: "Active" },
   { id: "FM-IT-007", title: "Remote Support", desc: "Request for remote assistance from IT support to resolve immediate technical issues.", icon: "settings_remote", path: "/forms/007", status: "Active" },
+  { id: "FM-IT-008", title: "Reviews", desc: "ให้คะแนนการบริการของฝ่าย IT แบบดาว 1-5 พร้อมเขียนรีวิวเพิ่มเติมได้", icon: "reviews", path: "/forms/008", status: "Active" },
 ];
 
 type ITFormCard = {
@@ -48,6 +49,35 @@ const ITForms = () => {
         });
         await batch.commit();
       } else {
+        const existingIds = new Set(snap.docs.map((item) => item.id));
+        const missingDefaults = defaultForms.filter((form) => !existingIds.has(form.id));
+        const outdatedDefaults = snap.docs
+          .map((item) => ({ ...(item.data() as Omit<ITFormCard, 'docId'>), id: item.id }))
+          .flatMap((existingForm) => {
+            const defaultForm = defaultForms.find((form) => form.id === existingForm.id);
+            if (!defaultForm) return [];
+
+            const hasChanged =
+              existingForm.title !== defaultForm.title ||
+              existingForm.desc !== defaultForm.desc ||
+              existingForm.icon !== defaultForm.icon ||
+              existingForm.path !== defaultForm.path ||
+              existingForm.status !== defaultForm.status;
+
+            return hasChanged ? [defaultForm] : [];
+          });
+
+        if (missingDefaults.length > 0 || outdatedDefaults.length > 0) {
+          const batch = writeBatch(db);
+          missingDefaults.forEach((form) => {
+            batch.set(doc(colRef, form.id), form);
+          });
+          outdatedDefaults.forEach((form) => {
+            batch.set(doc(colRef, form.id), form, { merge: true });
+          });
+          await batch.commit();
+        }
+
         const data = snap.docs.map((doc): ITFormCard => ({ ...(doc.data() as Omit<ITFormCard, 'docId'>), docId: doc.id }));
         data.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         setFormsData(data);

@@ -19,6 +19,7 @@ import AssetReturn from './pages/forms/AssetReturn';
 import LicenseRequest from './pages/forms/LicenseRequest';
 import UserRegistration from './pages/forms/UserRegistration';
 import RemoteSupport from './pages/forms/RemoteSupport';
+import ITReview from './pages/forms/ITReview';
 
 // Auth
 import { AuthProvider } from './contexts/AuthContext';
@@ -57,6 +58,7 @@ function App() {
             <Route path="forms/005" element={<LicenseRequest />} />
             <Route path="forms/006" element={<UserRegistration />} />
             <Route path="forms/007" element={<RemoteSupport />} />
+            <Route path="forms/008" element={<ITReview />} />
             
             {/* Protected Routes (Requires Login and Approved) */}
             <Route element={<ProtectedRoute />}>

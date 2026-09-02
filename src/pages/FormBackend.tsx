@@ -315,6 +315,9 @@ function getDetailText(tabId: string, data: FormRecord): string {
     case '007': {
       return (data.issueType as string) || (data.softwareName as string) || (data.supportType as string) || '-';
     }
+    case '008': {
+      return (data.reviewComment as string) || (data.comment as string) || '-';
+    }
     default:
       return '-';
   }
@@ -381,6 +384,7 @@ function getRecordYear(record: FormRecord): string | null {
     extractYearFromDocNo(record.wrNumber),
     extractYearFromDocNo(record.docNo),
     extractYearFromDocNo(record.id),
+    extractYearFromDateValue(record.reviewDate),
     extractYearFromDateValue(record.requestDate),
     extractYearFromDateValue(record.appointmentDate),
     extractYearFromDateValue(record.dateOfUse),
@@ -421,6 +425,7 @@ function renderCellContent(colId: string, record: any, activeTab: string): strin
   switch (colId) {
     case 'docNo': return String(record.docNo || '-');
     case 'requestDate': return String(record.requestDate || '-');
+    case 'reviewDate': return String(record.reviewDate || record.requestDate || '-');
     case 'reporterName':
       return activeTab === '001' ? String(record.reporter?.name || record.reporterName || '-') : String(record.applicantName || record.reporterName || '-');
     case 'applicantName':
@@ -516,6 +521,11 @@ function renderCellContent(colId: string, record: any, activeTab: string): strin
     case 'remoteProgram': return String(record.remoteProgram || '-');
     case 'remoteId': return String(record.remoteId || '-');
     case 'appointmentTime': return String(record.appointmentTime || '-');
+    case 'rating': {
+      const ratingValue = typeof record.rating === 'number' ? record.rating : Number(record.rating || 0);
+      return ratingValue > 0 ? `${ratingValue}/5` : '-';
+    }
+    case 'reviewComment': return String(record.reviewComment || record.comment || '-');
     case 'reporter': return getReporterName(record as FormRecord);
     case 'detail': return getDetailText(activeTab, record as FormRecord);
     default: return '-';
