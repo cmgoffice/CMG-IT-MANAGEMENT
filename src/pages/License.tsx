@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
+import { db, storage } from '../lib/firebase';
 import { ROOT_COLLECTION, ROOT_DOCUMENT } from '../lib/db';
 
 type LicenseView = 'licenseSoftwareIso' | 'office365Registry';
@@ -49,6 +50,7 @@ type OfficeLicenseHistoryItem = {
   endDate: string;
   color: string;
   sourceLabel: string;
+  isSuperseded?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -125,6 +127,23 @@ type AutodeskRenewRecord = Omit<AutodeskLicenseRecord, 'sourceType' | 'sourceLab
   createdAt?: string;
 };
 
+type AutodeskPdfFile = {
+  name: string;
+  url: string;
+  path?: string;
+  uploadedAt?: string;
+};
+
+type AutodeskPdfUploadMode = 'append' | 'replace';
+
+type AutodeskPdfRecord = {
+  id: string;
+  recordId: string;
+  packet: string;
+  files: AutodeskPdfFile[];
+  updatedAt?: string;
+};
+
 type AutodeskLicenseGroup = {
   packet: string;
   records: AutodeskLicenseRecord[];
@@ -134,6 +153,7 @@ type AutodeskLicenseGroup = {
 };
 
 const AUTODESK_RENEWAL_COLLECTION = 'licenseAutodeskRenewals';
+const AUTODESK_PDF_COLLECTION = 'licenseAutodeskPdfAssets';
 const OFFICE_LICENSE_COLLECTION = 'licenseMicrosoft365';
 const EXPIRING_SOON_DAYS = 30;
 
@@ -163,6 +183,13 @@ const buildOfficeLicenseId = (name: string, email: string) => {
   const normalized = `${normalizePacket(name)}__${normalizePacket(email)}`.replace(/^__|__$/g, '');
   return normalized ? encodeURIComponent(normalized) : `license-${Date.now()}`;
 };
+
+const isSameOfficeIdentity = (
+  leftName: string,
+  leftEmail: string,
+  rightName: string,
+  rightEmail: string,
+) => normalizePacket(leftName) === normalizePacket(rightName) && normalizePacket(leftEmail) === normalizePacket(rightEmail);
 
 const formatDisplayDate = (value: string) => {
   const trimmed = value.trim();
@@ -339,12 +366,19 @@ const License = () => {
   const [officeWorkbook, setOfficeWorkbook] = useState<WorkbookData | null>(null);
   const [officeDetailData, setOfficeDetailData] = useState<Office365DetailData | null>(null);
   const [autodeskRenewRecords, setAutodeskRenewRecords] = useState<AutodeskRenewRecord[]>([]);
+  const [autodeskPdfRecords, setAutodeskPdfRecords] = useState<AutodeskPdfRecord[]>([]);
   const [officeLicenseRecords, setOfficeLicenseRecords] = useState<OfficeLicenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAutodeskRenew, setIsSavingAutodeskRenew] = useState(false);
+  const [isUploadingAutodeskPdf, setIsUploadingAutodeskPdf] = useState(false);
+  const [isUpdatingAutodeskPdf, setIsUpdatingAutodeskPdf] = useState(false);
   const [isSavingOfficeLicense, setIsSavingOfficeLicense] = useState(false);
   const [isDeletingOfficeLicense, setIsDeletingOfficeLicense] = useState(false);
   const [selectedLicensePacket, setSelectedLicensePacket] = useState('');
+  const [selectedAutodeskRecordId, setSelectedAutodeskRecordId] = useState('');
+  const [selectedAutodeskPdfIndex, setSelectedAutodeskPdfIndex] = useState(0);
+  const [autodeskPdfUploadMode, setAutodeskPdfUploadMode] = useState<AutodeskPdfUploadMode>('append');
+  const [isAutodeskPreviewOpen, setIsAutodeskPreviewOpen] = useState(false);
   const [selectedOfficeUserId, setSelectedOfficeUserId] = useState('');
   const [autodeskModalMode, setAutodeskModalMode] = useState<AutodeskModalMode>(null);
   const [autodeskRenewTarget, setAutodeskRenewTarget] = useState<AutodeskLicenseRecord | null>(null);
@@ -376,6 +410,7 @@ const License = () => {
   });
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const officeUsersSectionRef = useRef<HTMLDivElement>(null);
+  const autodeskPdfInputRef = useRef<HTMLInputElement>(null);
   const [dragState, setDragState] = useState({ isDragging: false, startX: 0, scrollLeft: 0 });
 
   useEffect(() => {
@@ -403,6 +438,35 @@ const License = () => {
       });
 
       setAutodeskRenewRecords(nextRecords);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const autodeskPdfRef = collection(db, ROOT_COLLECTION, ROOT_DOCUMENT, AUTODESK_PDF_COLLECTION);
+    const unsubscribe = onSnapshot(autodeskPdfRef, (snapshot) => {
+      const nextRecords = snapshot.docs.map((record) => {
+        const data = record.data() as Partial<AutodeskPdfRecord>;
+        return {
+          id: record.id,
+          recordId: typeof data.recordId === 'string' ? data.recordId : '',
+          packet: typeof data.packet === 'string' ? data.packet : '',
+          files: Array.isArray(data.files)
+            ? data.files
+                .filter((file): file is AutodeskPdfFile => Boolean(file) && typeof file === 'object')
+                .map((file) => ({
+                  name: typeof file.name === 'string' ? file.name : 'PDF',
+                  url: typeof file.url === 'string' ? file.url : '',
+                  uploadedAt: typeof file.uploadedAt === 'string' ? file.uploadedAt : undefined,
+                }))
+                .filter((file) => file.url)
+            : [],
+          updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : undefined,
+        };
+      });
+
+      setAutodeskPdfRecords(nextRecords);
     });
 
     return unsubscribe;
@@ -494,6 +558,10 @@ const License = () => {
     () => buildAutodeskRecords(licenseWorkbook, autodeskRenewRecords),
     [autodeskRenewRecords, licenseWorkbook],
   );
+  const autodeskRenewedSourceIds = useMemo(
+    () => new Set(autodeskRenewRecords.map((record) => record.renewedFromId).filter((value): value is string => Boolean(value))),
+    [autodeskRenewRecords],
+  );
 
   const autodeskLicenseGroups = useMemo<AutodeskLicenseGroup[]>(() => {
     const groupMap = new Map<string, AutodeskLicenseRecord[]>();
@@ -548,24 +616,65 @@ const License = () => {
     () => autodeskLicenseGroups.find((group) => normalizePacket(group.packet) === normalizePacket(selectedLicensePacket)) ?? null,
     [autodeskLicenseGroups, selectedLicensePacket],
   );
+  const selectedAutodeskCurrentRecords = useMemo(
+    () => selectedAutodeskGroup?.records.filter((record) => !autodeskRenewedSourceIds.has(record.id)) ?? [],
+    [autodeskRenewedSourceIds, selectedAutodeskGroup],
+  );
+  const selectedAutodeskHistoryRecords = useMemo(
+    () => selectedAutodeskGroup?.records.filter((record) => autodeskRenewedSourceIds.has(record.id)) ?? [],
+    [autodeskRenewedSourceIds, selectedAutodeskGroup],
+  );
+  const selectedAutodeskRecord = useMemo(
+    () => selectedAutodeskGroup?.records.find((record) => record.id === selectedAutodeskRecordId) ?? null,
+    [selectedAutodeskGroup, selectedAutodeskRecordId],
+  );
+  const selectedAutodeskPdfRecord = useMemo(
+    () => autodeskPdfRecords.find((record) => record.recordId === selectedAutodeskRecordId) ?? null,
+    [autodeskPdfRecords, selectedAutodeskRecordId],
+  );
+  const selectedAutodeskPdfFiles = selectedAutodeskPdfRecord?.files ?? [];
+  const selectedAutodeskPdfFile = selectedAutodeskPdfFiles[selectedAutodeskPdfIndex] ?? null;
+
+  useEffect(() => {
+    const availableIds = selectedAutodeskGroup?.records.map((record) => record.id) ?? [];
+    if (!availableIds.length) {
+      if (selectedAutodeskRecordId) setSelectedAutodeskRecordId('');
+      return;
+    }
+
+    if (!selectedAutodeskRecordId || !availableIds.includes(selectedAutodeskRecordId)) {
+      setSelectedAutodeskRecordId(availableIds[0]);
+    }
+  }, [selectedAutodeskGroup, selectedAutodeskRecordId]);
+
+  useEffect(() => {
+    setSelectedAutodeskPdfIndex(0);
+  }, [selectedAutodeskRecordId]);
 
   const officePrimaryUsers = useMemo(
     () => officeDetailData?.primaryUsers.filter((user) => user.name) ?? [],
     [officeDetailData],
   );
 
+  const sortedOfficeLicenseRecords = useMemo(
+    () => [...officeLicenseRecords].sort((left, right) => getRecordSortTime(right) - getRecordSortTime(left)),
+    [officeLicenseRecords],
+  );
+  const officeRenewedSourceIds = useMemo(
+    () => new Set(sortedOfficeLicenseRecords.map((record) => record.renewedFromId).filter((value): value is string => Boolean(value))),
+    [sortedOfficeLicenseRecords],
+  );
+
   const officeLicenseItems = useMemo(() => {
     const itemMap = new Map<string, OfficeLicenseItem>();
 
     officePrimaryUsers.forEach((user) => {
-      const matchingRecords = officeLicenseRecords
+      const matchingRecords = sortedOfficeLicenseRecords
         .filter(
           (record) =>
-            (normalizePacket(record.name) === normalizePacket(user.name) &&
-              normalizePacket(record.email) === normalizePacket(user.email)) ||
+            isSameOfficeIdentity(record.name, record.email, user.name, user.email) ||
             (!record.email && normalizePacket(record.name || record.packet) === normalizePacket(user.name)),
-        )
-        .sort((left, right) => getRecordSortTime(right) - getRecordSortTime(left));
+        );
       const overrideRecord = matchingRecords[0];
       const groupMembers = officeDetailData?.groups.find((group) => group.color === user.color)?.members ?? [];
 
@@ -583,12 +692,10 @@ const License = () => {
       });
     });
 
-    officeLicenseRecords.forEach((record) => {
+    sortedOfficeLicenseRecords.forEach((record) => {
       const recordName = record.name || record.packet;
       const alreadyExists = Array.from(itemMap.values()).some(
-        (item) =>
-          normalizePacket(item.name) === normalizePacket(recordName) &&
-          normalizePacket(item.email) === normalizePacket(record.email),
+        (item) => isSameOfficeIdentity(item.name, item.email, recordName, record.email),
       );
       if (alreadyExists) return;
 
@@ -610,7 +717,7 @@ const License = () => {
     });
 
     return Array.from(itemMap.values()).sort((left, right) => left.name.localeCompare(right.name, 'th'));
-  }, [officeDetailData, officeLicenseRecords, officePrimaryUsers]);
+  }, [officeDetailData, officePrimaryUsers, sortedOfficeLicenseRecords]);
 
   useEffect(() => {
     if (!officeLicenseItems.length) {
@@ -650,19 +757,60 @@ const License = () => {
 
     const historyItems: OfficeLicenseHistoryItem[] = [];
     const primarySource = officePrimaryUsers.find(
-      (user) =>
-        normalizePacket(user.name) === normalizePacket(selectedOfficeLicenseItem.name) &&
-        normalizePacket(user.email) === normalizePacket(selectedOfficeLicenseItem.email),
+      (user) => isSameOfficeIdentity(user.name, user.email, selectedOfficeLicenseItem.name, selectedOfficeLicenseItem.email),
     );
+    const relatedRecordIds = new Set<string>();
+    const relatedRecords: OfficeLicenseRecord[] = [];
+    const queue = new Set<string>();
 
-    officeLicenseRecords
-      .filter(
-        (record) =>
-          normalizePacket(record.name || record.packet) === normalizePacket(selectedOfficeLicenseItem.name) &&
-          normalizePacket(record.email) === normalizePacket(selectedOfficeLicenseItem.email),
-      )
-      .sort((left, right) => getRecordSortTime(right) - getRecordSortTime(left))
-      .forEach((record, index) => {
+    if (selectedOfficeLicenseItem.recordId) {
+      queue.add(selectedOfficeLicenseItem.recordId);
+    }
+
+    sortedOfficeLicenseRecords.forEach((record) => {
+      const recordName = record.name || record.packet;
+      if (isSameOfficeIdentity(recordName, record.email, selectedOfficeLicenseItem.name, selectedOfficeLicenseItem.email)) {
+        queue.add(record.id);
+        if (record.renewedFromId) queue.add(record.renewedFromId);
+      }
+    });
+
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      sortedOfficeLicenseRecords.forEach((record) => {
+        if (
+          queue.has(record.id) ||
+          (record.renewedFromId && queue.has(record.renewedFromId))
+        ) {
+          if (!queue.has(record.id)) {
+            queue.add(record.id);
+            expanded = true;
+          }
+          if (record.renewedFromId && !queue.has(record.renewedFromId)) {
+            queue.add(record.renewedFromId);
+            expanded = true;
+          }
+        }
+      });
+    }
+
+    sortedOfficeLicenseRecords.forEach((record) => {
+      const recordName = record.name || record.packet;
+      const isIdentityMatch = isSameOfficeIdentity(
+        recordName,
+        record.email,
+        selectedOfficeLicenseItem.name,
+        selectedOfficeLicenseItem.email,
+      );
+      const isChainMatch = queue.has(record.id) || (record.renewedFromId ? queue.has(record.renewedFromId) : false);
+      if ((!isIdentityMatch && !isChainMatch) || relatedRecordIds.has(record.id)) return;
+
+      relatedRecordIds.add(record.id);
+      relatedRecords.push(record);
+    });
+
+    relatedRecords.forEach((record, index) => {
         historyItems.push({
           id: record.id,
           name: record.name || selectedOfficeLicenseItem.name,
@@ -671,7 +819,8 @@ const License = () => {
           keyValue: record.keyValue,
           endDate: record.endDate,
           color: record.color || selectedOfficeLicenseItem.color,
-          sourceLabel: index === 0 ? 'Current Renew' : 'Renew History',
+          sourceLabel: index === 0 ? 'Current' : 'History',
+          isSuperseded: officeRenewedSourceIds.has(record.id),
           createdAt: record.createdAt,
           updatedAt: record.updatedAt,
         });
@@ -691,7 +840,15 @@ const License = () => {
     }
 
     return historyItems;
-  }, [officeLicenseRecords, officePrimaryUsers, selectedOfficeLicenseItem]);
+  }, [officePrimaryUsers, officeRenewedSourceIds, selectedOfficeLicenseItem, sortedOfficeLicenseRecords]);
+  const selectedOfficeCurrentRecord = useMemo(
+    () => selectedOfficeHistory[0] ?? null,
+    [selectedOfficeHistory],
+  );
+  const selectedOfficePastRecords = useMemo(
+    () => selectedOfficeHistory.slice(1),
+    [selectedOfficeHistory],
+  );
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!tableContainerRef.current) return;
@@ -805,6 +962,93 @@ const License = () => {
     }
   };
 
+  const openAutodeskPdfPicker = (recordId: string, mode: AutodeskPdfUploadMode = 'append') => {
+    setSelectedAutodeskRecordId(recordId);
+    setAutodeskPdfUploadMode(mode);
+    autodeskPdfInputRef.current?.click();
+  };
+
+  const openAutodeskPreview = (recordId: string) => {
+    setSelectedAutodeskRecordId(recordId);
+    setSelectedAutodeskPdfIndex(0);
+    setIsAutodeskPreviewOpen(true);
+  };
+
+  const closeAutodeskPreview = () => {
+    setIsAutodeskPreviewOpen(false);
+  };
+
+  const handleAutodeskPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedAutodeskRecord) return;
+
+    setIsUploadingAutodeskPdf(true);
+    try {
+      const storageRef = ref(
+        storage,
+        `licenses/autodesk/${encodeURIComponent(selectedAutodeskRecord.id)}/${Date.now()}_${file.name}`,
+      );
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      const timestamp = new Date().toISOString();
+      const nextFile = { name: file.name, url, path: storageRef.fullPath, uploadedAt: timestamp };
+      const nextFiles =
+        autodeskPdfUploadMode === 'replace' && selectedAutodeskPdfFiles[selectedAutodeskPdfIndex]
+          ? selectedAutodeskPdfFiles.map((existingFile, index) => (index === selectedAutodeskPdfIndex ? nextFile : existingFile))
+          : [...(selectedAutodeskPdfRecord?.files ?? []), nextFile];
+
+      await setDoc(
+        doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, AUTODESK_PDF_COLLECTION, encodeURIComponent(selectedAutodeskRecord.id)),
+        {
+          recordId: selectedAutodeskRecord.id,
+          packet: selectedAutodeskRecord.packet,
+          files: nextFiles,
+          updatedAt: timestamp,
+        },
+        { merge: true },
+      );
+
+      setSelectedAutodeskPdfIndex(
+        autodeskPdfUploadMode === 'replace' && selectedAutodeskPdfFiles[selectedAutodeskPdfIndex]
+          ? selectedAutodeskPdfIndex
+          : Math.max(nextFiles.length - 1, 0),
+      );
+    } catch (error) {
+      console.error('Failed to upload Autodesk PDF:', error);
+      alert('อัปโหลด PDF ไม่สำเร็จ');
+    } finally {
+      setIsUploadingAutodeskPdf(false);
+      setAutodeskPdfUploadMode('append');
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteAutodeskPdf = async () => {
+    if (!selectedAutodeskRecord || !selectedAutodeskPdfFiles[selectedAutodeskPdfIndex]) return;
+
+    setIsUpdatingAutodeskPdf(true);
+    try {
+      const nextFiles = selectedAutodeskPdfFiles.filter((_, index) => index !== selectedAutodeskPdfIndex);
+      await setDoc(
+        doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, AUTODESK_PDF_COLLECTION, encodeURIComponent(selectedAutodeskRecord.id)),
+        {
+          recordId: selectedAutodeskRecord.id,
+          packet: selectedAutodeskRecord.packet,
+          files: nextFiles,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+
+      setSelectedAutodeskPdfIndex((currentIndex) => Math.max(0, Math.min(currentIndex - 1, nextFiles.length - 1)));
+    } catch (error) {
+      console.error('Failed to delete Autodesk PDF:', error);
+      alert('ลบ PDF ไม่สำเร็จ');
+    } finally {
+      setIsUpdatingAutodeskPdf(false);
+    }
+  };
+
   const renderAutodeskTable = (records: AutodeskLicenseRecord[]) => (
     <div className="overflow-hidden rounded-2xl border border-white/40 bg-white/35 shadow-sm">
       <div
@@ -818,7 +1062,7 @@ const License = () => {
         <table className="w-full min-w-[1160px] table-auto text-left">
           <thead className="bg-white/60">
             <tr>
-              {['License', 'Contract', 'Subscription ID', 'Term', 'Manage', 'User', 'Start', 'End', 'Company', 'Vendor', 'Status']
+              {['License', 'Contract', 'Subscription ID', 'Term', 'Manage', 'User', 'Start', 'End', 'Company', 'Vendor', 'PDF', 'Status']
                 .map((header) => (
                   <th
                     key={header}
@@ -835,11 +1079,20 @@ const License = () => {
           <tbody>
             {records.map((record) => {
               const status = getLicenseStatus(record.endDate);
+              const isSuperseded = autodeskRenewedSourceIds.has(record.id);
+              const isUrgentRenew = status.key === 'expired' && !isSuperseded;
+              const pdfCount = autodeskPdfRecords.find((item) => item.recordId === record.id)?.files.length ?? 0;
+              const rowClassName = isSuperseded && status.key === 'expired' ? 'hover:bg-white/50' : status.rowClassName || 'hover:bg-white/50';
 
               return (
                 <tr
                   key={record.id}
-                  className={`border-t border-white/40 align-top ${status.rowClassName || 'hover:bg-white/50'}`}
+                  onClick={() => openAutodeskPreview(record.id)}
+                  className={`border-t border-white/40 align-top transition-colors ${
+                    selectedAutodeskRecordId === record.id
+                      ? 'bg-[#e8f5ff]/95 text-[#1f4f80]'
+                      : rowClassName
+                  }`}
                 >
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold text-inherit">{record.packet || '-'}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{record.contract || '-'}</td>
@@ -853,19 +1106,44 @@ const License = () => {
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{record.vendor || '-'}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">
                     <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2 py-1 font-bold">
+                      <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                      {pdfCount}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2 py-1 font-bold">
                       <span className={`h-2.5 w-2.5 rounded-full ${status.dotClassName}`} />
                       {status.label}
                     </span>
                   </td>
                   {isMasterAdmin ? (
                     <td className="whitespace-nowrap px-3 py-2 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => openAutodeskRenewModal(record)}
-                        className="rounded-full border border-[#f4c777] bg-[#fff4dc] px-3 py-1 text-[11px] font-bold text-[#9a6400] transition-colors hover:bg-[#ffefc9]"
-                      >
-                        Renew
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openAutodeskPdfPicker(record.id);
+                          }}
+                          className="rounded-full border border-[#9bc7eb] bg-[#e8f5ff] px-3 py-1 text-[11px] font-bold text-[#27619d] transition-colors hover:bg-[#d7eeff]"
+                        >
+                          PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openAutodeskRenewModal(record);
+                          }}
+                          className={`rounded-full px-3 py-1 text-[11px] font-bold transition-colors ${
+                            isUrgentRenew
+                              ? 'border border-[#f2a0a0] bg-[#ffe3e3] text-[#b42318] hover:bg-[#ffd2d2]'
+                              : 'border border-[#f4c777] bg-[#fff4dc] text-[#9a6400] hover:bg-[#ffefc9]'
+                          }`}
+                        >
+                          {isUrgentRenew ? 'ต่อสิทธิ์' : 'แก้ไข'}
+                        </button>
+                      </div>
                     </td>
                   ) : null}
                 </tr>
@@ -916,8 +1194,12 @@ const License = () => {
           <tbody>
             {records.map((record) => {
               const status = getLicenseStatus(record.endDate);
+              const rowClassName =
+                record.isSuperseded && status.key === 'expired'
+                  ? 'border-t border-white/40 hover:bg-white/50'
+                  : `border-t border-white/40 ${status.rowClassName || 'hover:bg-white/50'}`;
               return (
-                <tr key={record.id} className={`border-t border-white/40 ${status.rowClassName || 'hover:bg-white/50'}`}>
+                <tr key={record.id} className={rowClassName}>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold text-inherit">{record.sourceLabel}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{record.packet || '-'}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">{record.keyValue || '-'}</td>
@@ -1187,9 +1469,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                         className={`rounded-2xl border px-4 py-3 text-left transition-all ${
                           selectedLicensePacket === item.packet
                             ? 'border-[#27619d] bg-[#e8f5ff] shadow-md shadow-[#27619d]/10'
-                            : item.expiredCount > 0
-                              ? 'border-[#f2b5b5] bg-[#fff1f1] hover:bg-[#ffe8e8]'
-                              : 'border-white/50 bg-white/60 hover:bg-white'
+                            : 'border-white/50 bg-white/60 hover:bg-white'
                         }`}
                       >
                         <div className="text-sm font-bold text-[#2c3437]">{item.packet}</div>
@@ -1233,7 +1513,25 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   </div>
                 </div>
 
-                {selectedAutodeskGroup ? renderAutodeskTable(selectedAutodeskGroup.records) : null}
+                {selectedAutodeskCurrentRecords.length ? (
+                  <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="font-display text-lg font-bold text-[#2c3437]">Current License</h3>
+                      <p className="font-body text-sm text-[#596064]">แสดงรายการ License ที่ใช้งานอยู่ตอนนี้</p>
+                    </div>
+                    {renderAutodeskTable(selectedAutodeskCurrentRecords)}
+                  </div>
+                ) : null}
+
+                {selectedAutodeskHistoryRecords.length ? (
+                  <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="font-display text-lg font-bold text-[#2c3437]">License History</h3>
+                      <p className="font-body text-sm text-[#596064]">แยกรายการเก่าที่ถูกต่อสิทธิ์แล้วออกจากรายการปัจจุบัน</p>
+                    </div>
+                    {renderAutodeskTable(selectedAutodeskHistoryRecords)}
+                  </div>
+                ) : null}
               </>
             ) : (
               <div className="rounded-3xl border border-white/40 bg-white/40 p-10 text-center shadow-sm">
@@ -1339,10 +1637,14 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                                       event.stopPropagation();
                                       openRenewOfficeLicenseModal(item);
                                     }}
-                                    className="rounded-full border border-[#f4c777] bg-[#fff4dc] px-3 py-1 text-[11px] font-bold text-[#9a6400] transition-colors hover:bg-[#ffefc9]"
+                                    className={`rounded-full px-3 py-1 text-[11px] font-bold transition-colors ${
+                                      status.key === 'expired'
+                                        ? 'border border-[#f2a0a0] bg-[#ffe3e3] text-[#b42318] hover:bg-[#ffd2d2]'
+                                        : 'border border-[#f4c777] bg-[#fff4dc] text-[#9a6400] hover:bg-[#ffefc9]'
+                                    }`}
                                     title="Renew License"
                                   >
-                                    Renew
+                                    {status.key === 'expired' ? 'ต่อสิทธิ์' : 'Renew'}
                                   </button>
                                   <button
                                     type="button"
@@ -1408,13 +1710,23 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               </div>
             </div>
 
-            {selectedOfficeHistory.length ? (
+            {selectedOfficeCurrentRecord ? (
               <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
                 <div className="mb-4">
-                  <h3 className="font-display text-lg font-bold text-[#2c3437]">Renew History</h3>
+                  <h3 className="font-display text-lg font-bold text-[#2c3437]">Current License</h3>
                   <p className="font-body text-sm text-[#596064]">ข้อมูลเก่าและข้อมูลที่ Renew จะถูกเก็บไว้ทั้งหมดในรายการนี้</p>
                 </div>
-                {renderOfficeHistoryTable(selectedOfficeHistory)}
+                {renderOfficeHistoryTable([selectedOfficeCurrentRecord])}
+              </div>
+            ) : null}
+
+            {selectedOfficePastRecords.length ? (
+              <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
+                <div className="mb-4">
+                  <h3 className="font-display text-lg font-bold text-[#2c3437]">License History</h3>
+                  <p className="font-body text-sm text-[#596064]">แยกรายการเก่าและประวัติการต่อสิทธิ์ออกจากตัวที่ใช้งานปัจจุบัน</p>
+                </div>
+                {renderOfficeHistoryTable(selectedOfficePastRecords)}
               </div>
             ) : null}
 
@@ -1429,6 +1741,137 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
         )}
       </div>
 
+      <input
+        ref={autodeskPdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={handleAutodeskPdfUpload}
+      />
+
+      {isAutodeskPreviewOpen && selectedAutodeskRecord ? (
+        <div className="fixed inset-0 z-[99985] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-[#2c3437]/40 backdrop-blur-sm" onClick={closeAutodeskPreview} />
+          <div className="relative flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/60 bg-white/95 shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-white/60 px-6 py-5">
+              <div>
+                <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">Preview</h3>
+                <p className="font-body text-sm text-[#596064]">{selectedAutodeskRecord.packet} • {selectedAutodeskRecord.user || '-'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAutodeskPreview}
+                className="rounded-full p-2 text-[#596064] transition-colors hover:bg-[#edf1f4]"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-6 py-6">
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-white/40 bg-white/50 p-6 shadow-sm">
+                  <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h4 className="font-display text-lg font-bold text-[#2c3437]">PDF Preview</h4>
+                      <p className="font-body text-sm text-[#596064]">ไฟล์ PDF ของรายการที่เลือก</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedAutodeskPdfFiles.map((file, index) => (
+                        <button
+                          key={`${file.url}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedAutodeskPdfIndex(index)}
+                          className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+                            selectedAutodeskPdfIndex === index
+                              ? 'bg-[#27619d] text-white'
+                              : 'bg-white/80 text-[#596064] hover:bg-white'
+                          }`}
+                        >
+                          {file.name}
+                        </button>
+                      ))}
+                      {isMasterAdmin ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openAutodeskPdfPicker(selectedAutodeskRecord.id, 'append')}
+                            disabled={isUploadingAutodeskPdf || isUpdatingAutodeskPdf}
+                            className="rounded-full bg-[#27619d] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#1f4f80] disabled:cursor-not-allowed disabled:bg-slate-300"
+                          >
+                            {isUploadingAutodeskPdf && autodeskPdfUploadMode === 'append' ? 'Uploading...' : 'Upload PDF'}
+                          </button>
+                          {selectedAutodeskPdfFile ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openAutodeskPdfPicker(selectedAutodeskRecord.id, 'replace')}
+                                disabled={isUploadingAutodeskPdf || isUpdatingAutodeskPdf}
+                                className="rounded-full border border-[#f4c777] bg-[#fff4dc] px-4 py-2 text-sm font-bold text-[#9a6400] transition-colors hover:bg-[#ffefc9] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                {isUploadingAutodeskPdf && autodeskPdfUploadMode === 'replace' ? 'Replacing...' : 'Replace PDF'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDeleteAutodeskPdf}
+                                disabled={isUploadingAutodeskPdf || isUpdatingAutodeskPdf}
+                                className="rounded-full border border-[#f2a0a0] bg-[#ffe3e3] px-4 py-2 text-sm font-bold text-[#b42318] transition-colors hover:bg-[#ffd2d2] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                {isUpdatingAutodeskPdf ? 'Deleting...' : 'Delete PDF'}
+                              </button>
+                            </>
+                          ) : null}
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="overflow-hidden rounded-2xl border border-white/50 bg-slate-100">
+                    {selectedAutodeskPdfFile ? (
+                      <iframe
+                        src={selectedAutodeskPdfFile.url}
+                        title={selectedAutodeskPdfFile.name}
+                        className="h-[360px] w-full border-0 bg-white"
+                      />
+                    ) : (
+                      <div className="flex h-[220px] items-center justify-center px-6 text-center text-sm font-medium text-[#596064]">
+                        ยังไม่มี PDF สำหรับรายการนี้
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/40 bg-white/50 p-6 shadow-sm">
+                  <div className="mb-4">
+                    <h4 className="font-display text-lg font-bold text-[#2c3437]">รายละเอียด Autodesk License</h4>
+                    <p className="font-body text-sm text-[#596064]">รายละเอียดของรายการที่เลือกอยู่ใน Autodesk License</p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      ['License', selectedAutodeskRecord.packet],
+                      ['Contract', selectedAutodeskRecord.contract],
+                      ['Subscription ID', selectedAutodeskRecord.subscriptionId],
+                      ['Term', selectedAutodeskRecord.term],
+                      ['Manage', selectedAutodeskRecord.manage],
+                      ['User', selectedAutodeskRecord.user],
+                      ['Start', formatDisplayDate(selectedAutodeskRecord.startDate)],
+                      ['End', formatDisplayDate(selectedAutodeskRecord.endDate)],
+                      ['Company', selectedAutodeskRecord.company],
+                      ['Vendor', selectedAutodeskRecord.vendor],
+                      ['Source', selectedAutodeskRecord.sourceLabel],
+                      ['PDF Files', String(selectedAutodeskPdfFiles.length)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-2xl bg-white/70 px-4 py-3 shadow-sm">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#596064]">{label}</div>
+                        <div className="mt-1 text-sm font-semibold text-[#2c3437]">{value || '-'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {autodeskModalMode ? (
         <div className="fixed inset-0 z-[99990] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#2c3437]/25 backdrop-blur-sm" onClick={closeAutodeskRenewModal} />
@@ -1436,12 +1879,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">
-                  {autodeskModalMode === 'add' ? 'เพิ่มรายการ Autodesk License' : 'Renew Autodesk License'}
+                  {autodeskModalMode === 'add' ? 'เพิ่มรายการ Autodesk License' : 'แก้ไข Autodesk License'}
                 </h3>
                 <p className="mt-2 font-body text-sm text-[#596064]">
                   {autodeskModalMode === 'add'
                     ? 'เพิ่มรายการใหม่เข้า License List ของ Autodesk'
-                    : 'บันทึกรายการต่ออายุเป็นประวัติใหม่ โดยเก็บข้อมูลเดิมไว้เหมือนเดิม'}
+                    : 'บันทึกการแก้ไขหรือการต่อสิทธิ์ โดยเก็บข้อมูลเดิมไว้เป็นประวัติ'}
                 </p>
               </div>
 
@@ -1598,7 +2041,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                     ? 'กำลังบันทึก...'
                     : autodeskModalMode === 'add'
                       ? 'บันทึกรายการ'
-                      : 'บันทึกการ Renew'}
+                      : 'บันทึกการแก้ไข'}
                 </button>
               </div>
             </form>
