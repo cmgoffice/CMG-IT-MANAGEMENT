@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
@@ -147,6 +147,7 @@ type AutodeskPdfRecord = {
 type AutodeskLicenseGroup = {
   packet: string;
   records: AutodeskLicenseRecord[];
+  currentRecords: AutodeskLicenseRecord[];
   activeCount: number;
   warningCount: number;
   expiredCount: number;
@@ -290,6 +291,20 @@ const getAutodeskSheetRows = (sheet: WorkbookSheet) => {
   };
 };
 
+const buildAutodeskRecordKey = (record: Pick<AutodeskLicenseRecord, 'packet' | 'contract' | 'subscriptionId' | 'user'>) => {
+  const packet = normalizeAutodeskPacket(record.packet);
+  const contract = record.contract.trim().toLowerCase();
+  const subscriptionId = record.subscriptionId.trim().toLowerCase();
+  const user = record.user.trim().toLowerCase();
+
+  if (!packet || !user || (!contract && !subscriptionId)) return '';
+  return [packet, contract, subscriptionId, user].join('|');
+};
+
+const isAutodeskRenewedRecord = (record: Pick<AutodeskLicenseRecord, 'sourceType' | 'renewedFromId'>) => (
+  record.sourceType === 'renew' && Boolean(record.renewedFromId)
+);
+
 const buildAutodeskRecords = (workbook: WorkbookData | null, renewRecords: AutodeskRenewRecord[]) => {
   const records: AutodeskLicenseRecord[] = [];
 
@@ -297,18 +312,18 @@ const buildAutodeskRecords = (workbook: WorkbookData | null, renewRecords: Autod
     .filter((sheet) => sheet.name === 'AutoCAD Revit LT Suite (2)')
     .forEach((sheet) => {
       const { headers, rows } = getAutodeskSheetRows(sheet);
-      const packetIndex = findColumnIndex(headers, ['Packet', 'ชื่อโปรแกรม']);
+      const packetIndex = findColumnIndex(headers, ['Packet', 'à¹€à¸˜ÂŠà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸à¹€à¸™Â‚à¹€à¸˜Â›à¹€à¸˜à¸ƒà¹€à¸™Âà¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸']);
       const contractIndex = findColumnIndex(headers, ['Contract']);
       const subscriptionIndex = findColumnIndex(headers, ['Subscription ID']);
       const termIndex = findColumnIndex(headers, ['term']);
-      const manageIndex = findColumnIndex(headers, ['Manage', 'ผู้กำหนดสิทธ์']);
-      const userIndex = findColumnIndex(headers, ['User', 'ผู้ถือลายเซ้น']);
-      const startIndex = findColumnIndex(headers, ['Start', 'วันที่เริ่ม']);
-      const endIndex = findColumnIndex(headers, ['End', 'สิ้นสุด']);
-      const companyIndex = findColumnIndex(headers, ['Company', 'บริษัทใช้งาน']);
-      const vendorIndex = findColumnIndex(headers, ['Vender', 'บริษัทที่ขาย']);
-      const saleIndex = findColumnIndex(headers, ['Sale', 'ผู้ขาย']);
-      const telIndex = findColumnIndex(headers, ['Tel.', 'เบอโทรศัพท์']);
+      const manageIndex = findColumnIndex(headers, ['Manage', 'à¹€à¸˜Âœà¹€à¸˜à¸™à¹€à¸™Â‰à¹€à¸˜Âà¹€à¸˜à¸“à¹€à¸˜à¸‹à¹€à¸˜Â™à¹€à¸˜â€à¹€à¸˜à¸Šà¹€à¸˜à¸”à¹€à¸˜â€”à¹€à¸˜Â˜à¹€à¸™ÂŒ']);
+      const userIndex = findColumnIndex(headers, ['User', 'à¹€à¸˜Âœà¹€à¸˜à¸™à¹€à¸™Â‰à¹€à¸˜â€“à¹€à¸˜à¸—à¹€à¸˜à¸à¹€à¸˜à¸…à¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸™â‚¬à¹€à¸˜Â‹à¹€à¸™Â‰à¹€à¸˜Â™']);
+      const startIndex = findColumnIndex(headers, ['Start', 'à¹€à¸˜à¸‡à¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜â€”à¹€à¸˜à¸•à¹€à¸™Âˆà¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸˜à¸”à¹€à¸™Âˆà¹€à¸˜à¸']);
+      const endIndex = findColumnIndex(headers, ['End', 'à¹€à¸˜à¸Šà¹€à¸˜à¸”à¹€à¸™Â‰à¹€à¸˜Â™à¹€à¸˜à¸Šà¹€à¸˜à¸˜à¹€à¸˜â€']);
+      const companyIndex = findColumnIndex(headers, ['Company', 'à¹€à¸˜Âšà¹€à¸˜à¸ƒà¹€à¸˜à¸”à¹€à¸˜à¸‰à¹€à¸˜à¸‘à¹€à¸˜â€”à¹€à¸™Âƒà¹€à¸˜ÂŠà¹€à¸™Â‰à¹€à¸˜Â‡à¹€à¸˜à¸’à¹€à¸˜Â™']);
+      const vendorIndex = findColumnIndex(headers, ['Vender', 'à¹€à¸˜Âšà¹€à¸˜à¸ƒà¹€à¸˜à¸”à¹€à¸˜à¸‰à¹€à¸˜à¸‘à¹€à¸˜â€”à¹€à¸˜â€”à¹€à¸˜à¸•à¹€à¸™Âˆà¹€à¸˜Â‚à¹€à¸˜à¸’à¹€à¸˜à¸‚']);
+      const saleIndex = findColumnIndex(headers, ['Sale', 'à¹€à¸˜Âœà¹€à¸˜à¸™à¹€à¸™Â‰à¹€à¸˜Â‚à¹€à¸˜à¸’à¹€à¸˜à¸‚']);
+      const telIndex = findColumnIndex(headers, ['Tel.', 'à¹€à¸™â‚¬à¹€à¸˜Âšà¹€à¸˜à¸à¹€à¸™Â‚à¹€à¸˜â€”à¹€à¸˜à¸ƒà¹€à¸˜à¸ˆà¹€à¸˜à¸‘à¹€à¸˜Âžà¹€à¸˜â€”à¹€à¸™ÂŒ']);
 
       rows.forEach((row, rowIndex) => {
         const rawPacket = packetIndex >= 0 ? row[packetIndex] || '' : '';
@@ -370,6 +385,7 @@ const License = () => {
   const [officeLicenseRecords, setOfficeLicenseRecords] = useState<OfficeLicenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAutodeskRenew, setIsSavingAutodeskRenew] = useState(false);
+  const [deletingAutodeskRenewId, setDeletingAutodeskRenewId] = useState('');
   const [isUploadingAutodeskPdf, setIsUploadingAutodeskPdf] = useState(false);
   const [isUpdatingAutodeskPdf, setIsUpdatingAutodeskPdf] = useState(false);
   const [isSavingOfficeLicense, setIsSavingOfficeLicense] = useState(false);
@@ -558,10 +574,38 @@ const License = () => {
     () => buildAutodeskRecords(licenseWorkbook, autodeskRenewRecords),
     [autodeskRenewRecords, licenseWorkbook],
   );
-  const autodeskRenewedSourceIds = useMemo(
-    () => new Set(autodeskRenewRecords.map((record) => record.renewedFromId).filter((value): value is string => Boolean(value))),
-    [autodeskRenewRecords],
-  );
+  const autodeskRenewedSourceIds = useMemo(() => {
+    const explicitRenewedIds = new Set(
+      autodeskRenewRecords.map((record) => record.renewedFromId).filter((value): value is string => Boolean(value)),
+    );
+
+    const groupedRecords = new Map<string, AutodeskLicenseRecord[]>();
+    autodeskLicenseRecords.forEach((record) => {
+      const key = buildAutodeskRecordKey(record);
+      if (!key) return;
+
+      const records = groupedRecords.get(key) ?? [];
+      records.push(record);
+      groupedRecords.set(key, records);
+    });
+
+    groupedRecords.forEach((records) => {
+      if (records.length < 2) return;
+
+      const latestEndTime = Math.max(
+        ...records.map((record) => parseDateValue(record.endDate)?.getTime() ?? Number.MIN_SAFE_INTEGER),
+      );
+
+      records.forEach((record) => {
+        const recordEndTime = parseDateValue(record.endDate)?.getTime() ?? Number.MIN_SAFE_INTEGER;
+        if (recordEndTime < latestEndTime) {
+          explicitRenewedIds.add(record.id);
+        }
+      });
+    });
+
+    return explicitRenewedIds;
+  }, [autodeskLicenseRecords, autodeskRenewRecords]);
 
   const autodeskLicenseGroups = useMemo<AutodeskLicenseGroup[]>(() => {
     const groupMap = new Map<string, AutodeskLicenseRecord[]>();
@@ -577,8 +621,14 @@ const License = () => {
 
     return Array.from(groupMap.entries())
       .map(([packet, records]) => {
-        const counts = records.reduce(
+        const currentRecords = records.filter((record) => !autodeskRenewedSourceIds.has(record.id));
+        const counts = currentRecords.reduce(
           (summary, record) => {
+            if (isAutodeskRenewedRecord(record)) {
+              summary.activeCount += 1;
+              return summary;
+            }
+
             const status = getLicenseStatus(record.endDate);
             if (status.key === 'expired') summary.expiredCount += 1;
             else if (status.key === 'warning') summary.warningCount += 1;
@@ -591,11 +641,12 @@ const License = () => {
         return {
           packet,
           records,
+          currentRecords,
           ...counts,
         };
       })
       .sort((left, right) => left.packet.localeCompare(right.packet, 'th'));
-  }, [autodeskLicenseRecords]);
+  }, [autodeskLicenseRecords, autodeskRenewedSourceIds]);
 
   useEffect(() => {
     if (!autodeskLicenseGroups.length) {
@@ -617,13 +668,20 @@ const License = () => {
     [autodeskLicenseGroups, selectedLicensePacket],
   );
   const selectedAutodeskCurrentRecords = useMemo(
-    () => selectedAutodeskGroup?.records.filter((record) => !autodeskRenewedSourceIds.has(record.id)) ?? [],
-    [autodeskRenewedSourceIds, selectedAutodeskGroup],
+    () => selectedAutodeskGroup?.currentRecords ?? [],
+    [selectedAutodeskGroup],
   );
-  const selectedAutodeskHistoryRecords = useMemo(
-    () => selectedAutodeskGroup?.records.filter((record) => autodeskRenewedSourceIds.has(record.id)) ?? [],
-    [autodeskRenewedSourceIds, selectedAutodeskGroup],
-  );
+  const selectedAutodeskHistoryRecords = useMemo(() => {
+    if (!selectedAutodeskGroup) return [];
+
+    return selectedAutodeskGroup.records
+      .filter((record) => autodeskRenewedSourceIds.has(record.id))
+      .sort((left, right) => {
+        const leftTime = parseDateValue(left.endDate)?.getTime() ?? 0;
+        const rightTime = parseDateValue(right.endDate)?.getTime() ?? 0;
+        return rightTime - leftTime;
+      });
+  }, [autodeskRenewedSourceIds, selectedAutodeskGroup]);
   const selectedAutodeskRecord = useMemo(
     () => selectedAutodeskGroup?.records.find((record) => record.id === selectedAutodeskRecordId) ?? null,
     [selectedAutodeskGroup, selectedAutodeskRecordId],
@@ -636,16 +694,32 @@ const License = () => {
   const selectedAutodeskPdfFile = selectedAutodeskPdfFiles[selectedAutodeskPdfIndex] ?? null;
 
   useEffect(() => {
-    const availableIds = selectedAutodeskGroup?.records.map((record) => record.id) ?? [];
+    const availableIds = selectedAutodeskCurrentRecords.length
+      ? selectedAutodeskCurrentRecords.map((record) => record.id)
+      : selectedAutodeskGroup?.records.map((record) => record.id) ?? [];
     if (!availableIds.length) {
       if (selectedAutodeskRecordId) setSelectedAutodeskRecordId('');
       return;
     }
 
     if (!selectedAutodeskRecordId || !availableIds.includes(selectedAutodeskRecordId)) {
-      setSelectedAutodeskRecordId(availableIds[0]);
+      const recordMap = new Map((selectedAutodeskGroup?.records ?? []).map((record) => [record.id, record]));
+      const preferredId = availableIds.find((id) => {
+        let currentRecord = recordMap.get(id);
+        const visited = new Set<string>();
+
+        while (currentRecord?.renewedFromId) {
+          const previousRecord = recordMap.get(currentRecord.renewedFromId);
+          if (!previousRecord || visited.has(previousRecord.id)) break;
+          return true;
+        }
+
+        return false;
+      });
+
+      setSelectedAutodeskRecordId(preferredId ?? availableIds[0]);
     }
-  }, [selectedAutodeskGroup, selectedAutodeskRecordId]);
+  }, [selectedAutodeskCurrentRecords, selectedAutodeskGroup, selectedAutodeskRecordId]);
 
   useEffect(() => {
     setSelectedAutodeskPdfIndex(0);
@@ -928,7 +1002,7 @@ const License = () => {
     const endDate = autodeskRenewForm.endDate.trim();
 
     if (!packet || !user || !startDate || !endDate) {
-      alert('กรุณากรอก License, User, วันเริ่ม และวันหมดอายุให้ครบ');
+      alert('à¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸˜à¹€à¸˜â€œà¹€à¸˜à¸’à¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸à¹€à¸˜Â License, User, à¹€à¸˜à¸‡à¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸˜à¸”à¹€à¸™Âˆà¹€à¸˜à¸ à¹€à¸™Âà¹€à¸˜à¸…à¹€à¸˜à¸à¹€à¸˜à¸‡à¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜à¸‹à¹€à¸˜à¸à¹€à¸˜â€à¹€à¸˜à¸à¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜à¸˜à¹€à¸™Âƒà¹€à¸˜à¸‹à¹€à¸™Â‰à¹€à¸˜Â„à¹€à¸˜à¸ƒà¹€à¸˜Âš');
       return;
     }
 
@@ -956,7 +1030,7 @@ const License = () => {
       setAutodeskRenewTarget(null);
     } catch (error) {
       console.error('Failed to save Autodesk renew record:', error);
-      alert('บันทึกการ Renew ไม่สำเร็จ');
+      alert('à¹€à¸˜Âšà¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜â€”à¹€à¸˜à¸–à¹€à¸˜Âà¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒ Renew à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆà¹€à¸˜à¸Šà¹€à¸˜à¸“à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸™Â‡à¹€à¸˜Âˆ');
     } finally {
       setIsSavingAutodeskRenew(false);
     }
@@ -1015,7 +1089,7 @@ const License = () => {
       );
     } catch (error) {
       console.error('Failed to upload Autodesk PDF:', error);
-      alert('อัปโหลด PDF ไม่สำเร็จ');
+      alert('à¹€à¸˜à¸à¹€à¸˜à¸‘à¹€à¸˜Â›à¹€à¸™Â‚à¹€à¸˜à¸‹à¹€à¸˜à¸…à¹€à¸˜â€ PDF à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆà¹€à¸˜à¸Šà¹€à¸˜à¸“à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸™Â‡à¹€à¸˜Âˆ');
     } finally {
       setIsUploadingAutodeskPdf(false);
       setAutodeskPdfUploadMode('append');
@@ -1043,13 +1117,43 @@ const License = () => {
       setSelectedAutodeskPdfIndex((currentIndex) => Math.max(0, Math.min(currentIndex - 1, nextFiles.length - 1)));
     } catch (error) {
       console.error('Failed to delete Autodesk PDF:', error);
-      alert('ลบ PDF ไม่สำเร็จ');
+      alert('à¹€à¸˜à¸…à¹€à¸˜Âš PDF à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆà¹€à¸˜à¸Šà¹€à¸˜à¸“à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸™Â‡à¹€à¸˜Âˆ');
     } finally {
       setIsUpdatingAutodeskPdf(false);
     }
   };
 
-  const renderAutodeskTable = (records: AutodeskLicenseRecord[]) => (
+  const handleDeleteAutodeskRenewRecord = async (record: AutodeskLicenseRecord) => {
+    if (record.sourceType !== 'renew') {
+      alert('Only manually added renewal records can be deleted.');
+      return;
+    }
+
+    const shouldDelete = window.confirm(`Delete ${record.packet} from Autodesk License?`);
+    if (!shouldDelete) return;
+
+    setDeletingAutodeskRenewId(record.id);
+    try {
+      await deleteDoc(doc(db, ROOT_COLLECTION, ROOT_DOCUMENT, AUTODESK_RENEWAL_COLLECTION, record.id));
+
+      if (selectedAutodeskRecordId === record.id) {
+        setSelectedAutodeskRecordId('');
+      }
+    } catch (error) {
+      console.error('Failed to delete Autodesk renew record:', error);
+      alert('Delete Autodesk License failed.');
+    } finally {
+      setDeletingAutodeskRenewId('');
+    }
+  };
+
+  const renderAutodeskTable = (records: AutodeskLicenseRecord[], tableMode: 'current' | 'history') => {
+    const visibleRecords =
+      tableMode === 'current'
+        ? records.filter((record) => !autodeskRenewedSourceIds.has(record.id))
+        : records;
+
+    return (
     <div className="overflow-hidden rounded-2xl border border-white/40 bg-white/35 shadow-sm">
       <div
         ref={tableContainerRef}
@@ -1077,12 +1181,21 @@ const License = () => {
             </tr>
           </thead>
           <tbody>
-            {records.map((record) => {
+            {visibleRecords.map((record) => {
               const status = getLicenseStatus(record.endDate);
               const isSuperseded = autodeskRenewedSourceIds.has(record.id);
-              const isUrgentRenew = status.key === 'expired' && !isSuperseded;
+              const isRenewedCurrent = tableMode === 'current' && isAutodeskRenewedRecord(record);
+              const isUrgentRenew = status.key === 'expired' && !isSuperseded && !isRenewedCurrent;
               const pdfCount = autodeskPdfRecords.find((item) => item.recordId === record.id)?.files.length ?? 0;
-              const rowClassName = isSuperseded && status.key === 'expired' ? 'hover:bg-white/50' : status.rowClassName || 'hover:bg-white/50';
+              const isNeutralExpiredRow =
+                status.key === 'expired' && (tableMode === 'history' || isSuperseded || isRenewedCurrent);
+              const rowClassName = isNeutralExpiredRow ? 'hover:bg-white/50' : status.rowClassName || 'hover:bg-white/50';
+              const statusDotClassName = isRenewedCurrent ? 'bg-[#16a34a]' : isNeutralExpiredRow ? 'bg-slate-400' : status.dotClassName;
+              const statusLabel = isRenewedCurrent
+                ? 'Renewed'
+                : tableMode === 'history' && status.key === 'expired' && isSuperseded
+                  ? 'Renewed'
+                  : status.label;
 
               return (
                 <tr
@@ -1112,8 +1225,8 @@ const License = () => {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-inherit">
                     <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2 py-1 font-bold">
-                      <span className={`h-2.5 w-2.5 rounded-full ${status.dotClassName}`} />
-                      {status.label}
+                      <span className={`h-2.5 w-2.5 rounded-full ${statusDotClassName}`} />
+                      {statusLabel}
                     </span>
                   </td>
                   {isMasterAdmin ? (
@@ -1141,7 +1254,30 @@ const License = () => {
                               : 'border border-[#f4c777] bg-[#fff4dc] text-[#9a6400] hover:bg-[#ffefc9]'
                           }`}
                         >
-                          {isUrgentRenew ? 'ต่อสิทธิ์' : 'แก้ไข'}
+                          {isUrgentRenew ? 'Renew' : 'Edit'}
+                        </button>
+                        {tableMode === 'current' && isUrgentRenew ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openAutodeskRenewModal(record);
+                            }}
+                            className="rounded-full border border-[#f4c777] bg-[#fff4dc] px-3 py-1 text-[11px] font-bold text-[#9a6400] transition-colors hover:bg-[#ffefc9]"
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteAutodeskRenewRecord(record);
+                          }}
+                          disabled={record.sourceType !== 'renew' || deletingAutodeskRenewId === record.id}
+                          className="rounded-full border border-[#f2a0a0] bg-[#ffe3e3] px-3 py-1 text-[11px] font-bold text-[#b42318] transition-colors hover:bg-[#ffd2d2] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          {deletingAutodeskRenewId === record.id ? 'Deleting...' : 'Delete'}
                         </button>
                       </div>
                     </td>
@@ -1153,7 +1289,8 @@ const License = () => {
         </table>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderOfficeGroupMembersTable = (members: Office365GroupMember[]) => (
     <div className="overflow-hidden rounded-2xl border border-white/40 bg-white/35 shadow-sm">
@@ -1161,8 +1298,8 @@ const License = () => {
         <table className="w-full min-w-[720px] table-auto text-left">
           <thead className="bg-white/60">
             <tr>
-              <th className="whitespace-nowrap px-4 py-3 text-xs font-bold tracking-wide text-[#596064]">ชื่อ</th>
-              <th className="whitespace-nowrap px-4 py-3 text-xs font-bold tracking-wide text-[#596064]">อีเมล</th>
+              <th className="whitespace-nowrap px-4 py-3 text-xs font-bold tracking-wide text-[#596064]">à¹€à¸˜ÂŠà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸</th>
+              <th className="whitespace-nowrap px-4 py-3 text-xs font-bold tracking-wide text-[#596064]">à¹€à¸˜à¸à¹€à¸˜à¸•à¹€à¸™â‚¬à¹€à¸˜à¸à¹€à¸˜à¸…</th>
             </tr>
           </thead>
           <tbody>
@@ -1187,8 +1324,8 @@ const License = () => {
               <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Source</th>
               <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">License</th>
               <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Key</th>
-              <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">หมดอายุ</th>
-              <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">บันทึกเมื่อ</th>
+              <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">à¹€à¸˜à¸‹à¹€à¸˜à¸à¹€à¸˜â€à¹€à¸˜à¸à¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜à¸˜</th>
+              <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">à¹€à¸˜Âšà¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜â€”à¹€à¸˜à¸–à¹€à¸˜Âà¹€à¸™â‚¬à¹€à¸˜à¸à¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸</th>
             </tr>
           </thead>
           <tbody>
@@ -1280,7 +1417,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
     const color = officeForm.color.trim();
 
     if (!name || !packet || !keyValue || !endDate) {
-      alert('กรุณากรอกชื่อ, License, Key และวันหมดอายุให้ครบ');
+      alert('à¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸˜à¹€à¸˜â€œà¹€à¸˜à¸’à¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸à¹€à¸˜Âà¹€à¸˜ÂŠà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸, License, Key à¹€à¸™Âà¹€à¸˜à¸…à¹€à¸˜à¸à¹€à¸˜à¸‡à¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜à¸‹à¹€à¸˜à¸à¹€à¸˜â€à¹€à¸˜à¸à¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜à¸˜à¹€à¸™Âƒà¹€à¸˜à¸‹à¹€à¸™Â‰à¹€à¸˜Â„à¹€à¸˜à¸ƒà¹€à¸˜Âš');
       return;
     }
 
@@ -1299,7 +1436,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
       existingRecord &&
       existingRecord.id !== officeEditingLicenseId
     ) {
-      alert('มีรายการนี้อยู่แล้ว');
+      alert('à¹€à¸˜à¸à¹€à¸˜à¸•à¹€à¸˜à¸ƒà¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒà¹€à¸˜Â™à¹€à¸˜à¸•à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜à¸‚à¹€à¸˜à¸™à¹€à¸™Âˆà¹€à¸™Âà¹€à¸˜à¸…à¹€à¸™Â‰à¹€à¸˜à¸‡');
       return;
     }
 
@@ -1351,7 +1488,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
       setOfficeEditingSourceName('');
     } catch (error) {
       console.error('Failed to save Microsoft 365 license:', error);
-      alert('บันทึกข้อมูล License ไม่สำเร็จ');
+      alert('à¹€à¸˜Âšà¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜â€”à¹€à¸˜à¸–à¹€à¸˜Âà¹€à¸˜Â‚à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜à¸à¹€à¸˜à¸™à¹€à¸˜à¸… License à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆà¹€à¸˜à¸Šà¹€à¸˜à¸“à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸™Â‡à¹€à¸˜Âˆ');
     } finally {
       setIsSavingOfficeLicense(false);
     }
@@ -1369,7 +1506,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
       setOfficeDeleteTarget(null);
     } catch (error) {
       console.error('Failed to delete Microsoft 365 license:', error);
-      alert('ลบข้อมูล License ไม่สำเร็จ');
+      alert('à¹€à¸˜à¸…à¹€à¸˜Âšà¹€à¸˜Â‚à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜à¸à¹€à¸˜à¸™à¹€à¸˜à¸… License à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆà¹€à¸˜à¸Šà¹€à¸˜à¸“à¹€à¸™â‚¬à¹€à¸˜à¸ƒà¹€à¸™Â‡à¹€à¸˜Âˆ');
     } finally {
       setIsDeletingOfficeLicense(false);
     }
@@ -1382,7 +1519,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
           <div>
             <h1 className="mb-2 font-display text-4xl font-extrabold tracking-tight text-[#2c3437]">License Center</h1>
             <p className="max-w-3xl font-body text-[#596064]">
-              หน้า License นี้แสดงข้อมูลจาก Excel snapshot และข้อมูลที่บันทึกเพิ่มในระบบ เพื่อให้ใช้งานได้ทันทีบนหน้าเว็บ
+              Manage license data from Excel snapshots together with renewal records saved in the system, so current usage and license history can be reviewed directly on this page.
             </p>
           </div>
 
@@ -1413,7 +1550,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
             >
               <span className="material-symbols-outlined text-[20px]">table_view</span>
               <span>Registry:</span>
-              <span className="font-bold">ทะเบียน Office 365 CMG</span>
+              <span className="font-bold">Microsoft 365 Registry</span>
               <span className="material-symbols-outlined text-[18px]">expand_more</span>
             </button>
           </div>
@@ -1421,7 +1558,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 
         {isLoading ? (
           <div className="rounded-3xl border border-white/40 bg-white/40 p-10 text-center shadow-sm">
-            <p className="text-sm font-medium text-[#596064]">กำลังโหลดข้อมูลจาก Excel snapshot...</p>
+            <p className="text-sm font-medium text-[#596064]">Loading license data from Excel snapshot...</p>
           </div>
         ) : activeView === 'licenseSoftwareIso' ? (
           <section className="space-y-6">
@@ -1439,7 +1576,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white/60 px-4 py-3 text-sm font-semibold text-[#2c3437] shadow-sm">
-                  {selectedAutodeskGroup?.records.length ?? autodeskLicenseRecords.length} licenses
+                  {selectedAutodeskGroup?.currentRecords.length ?? autodeskLicenseRecords.length} licenses
                 </div>
               </div>
             </div>
@@ -1456,7 +1593,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                         className="inline-flex items-center justify-center gap-2 rounded-full bg-[#27619d] px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#1f4f80]"
                       >
                         <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                        เพิ่มรายการ
+                        Add Item
                       </button>
                     ) : null}
                   </div>
@@ -1474,18 +1611,18 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                       >
                         <div className="text-sm font-bold text-[#2c3437]">{item.packet}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-1">
-                          {item.records.map((record) => {
+                          {item.currentRecords.map((record) => {
                             const status = getLicenseStatus(record.endDate);
                             return (
                               <span
                                 key={`${item.packet}-${record.id}`}
                                 className={`h-2.5 w-2.5 rounded-full ${status.dotClassName}`}
-                                title={`${record.user || item.packet} • ${status.label}`}
+                                title={`${record.user || item.packet} â€¢ ${status.label}`}
                               />
                             );
                           })}
                         </div>
-                        <div className="mt-2 text-[11px] font-medium text-[#596064]">{item.records.length} licenses</div>
+                        <div className="mt-2 text-[11px] font-medium text-[#596064]">{item.currentRecords.length} licenses</div>
                       </button>
                     ))}
                   </div>
@@ -1497,7 +1634,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                       <h3 className="font-display text-lg font-bold text-[#2c3437]">
                         {selectedLicensePacket || 'Selected License'}
                       </h3>
-                      <p className="font-body text-sm text-[#596064]">แสดงรายการเดิมและประวัติ Renew ของ License นี้ในที่เดียว</p>
+                      <p className="font-body text-sm text-[#596064]">View current licenses and renewal history for the selected Autodesk package in one place.</p>
                     </div>
                     <div className="flex flex-wrap gap-3">
                       <div className="rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-bold text-[#166534]">
@@ -1517,25 +1654,41 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
                     <div className="mb-4">
                       <h3 className="font-display text-lg font-bold text-[#2c3437]">Current License</h3>
-                      <p className="font-body text-sm text-[#596064]">แสดงรายการ License ที่ใช้งานอยู่ตอนนี้</p>
+                      <p className="font-body text-sm text-[#596064]">Shows the licenses that are currently active for this Autodesk package.</p>
                     </div>
-                    {renderAutodeskTable(selectedAutodeskCurrentRecords)}
+                    {renderAutodeskTable(selectedAutodeskCurrentRecords, 'current')}
                   </div>
                 ) : null}
 
-                {selectedAutodeskHistoryRecords.length ? (
-                  <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
-                    <div className="mb-4">
+                <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
                       <h3 className="font-display text-lg font-bold text-[#2c3437]">License History</h3>
-                      <p className="font-body text-sm text-[#596064]">แยกรายการเก่าที่ถูกต่อสิทธิ์แล้วออกจากรายการปัจจุบัน</p>
+                      <p className="font-body text-sm text-[#596064]">When a license is renewed, the previous record will move to this history section.</p>
                     </div>
-                    {renderAutodeskTable(selectedAutodeskHistoryRecords)}
+                    {isMasterAdmin ? (
+                      <button
+                        type="button"
+                        onClick={openAutodeskAddModal}
+                        className="inline-flex items-center gap-2 self-start rounded-full bg-[#27619d] px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1f4f80]"
+                      >
+                        <span className="material-symbols-outlined text-base">add_circle</span>
+                        Add Item
+                      </button>
+                    ) : null}
                   </div>
-                ) : null}
+                  {selectedAutodeskHistoryRecords.length ? (
+                    renderAutodeskTable(selectedAutodeskHistoryRecords, 'history')
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-white/50 bg-white/30 px-4 py-6 text-sm text-[#596064]">
+                      No renewal history for this license yet.
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="rounded-3xl border border-white/40 bg-white/40 p-10 text-center shadow-sm">
-                <p className="text-sm font-medium text-[#596064]">ไม่พบข้อมูล Autodesk License</p>
+                <p className="text-sm font-medium text-[#596064]">No Autodesk license data found.</p>
               </div>
             )}
           </section>
@@ -1548,7 +1701,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                     <span className="material-symbols-outlined text-sm">table_chart</span>
                     Excel snapshot + Firebase
                   </div>
-                  <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-[#2c3437]">ทะเบียน Office 365 CMG</h2>
+                  <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-[#2c3437]">Microsoft 365 Registry</h2>
                   <p className="mt-2 font-body text-sm text-[#596064]">
                     Source: {officeWorkbook?.sourceFileName} | Updated: {officeWorkbook?.sourceLastWriteTime} | Synced:{' '}
                     {officeWorkbook?.syncedAt}
@@ -1571,7 +1724,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="font-display text-lg font-bold text-[#2c3437]">License Microsoft 365+</h3>
-                  <p className="font-body text-sm text-[#596064]">เก็บ Key และวันหมดอายุ พร้อมจัดการรายการ License ได้จากหน้านี้</p>
+                  <p className="font-body text-sm text-[#596064]">Manage Microsoft 365 license keys, expiry dates, and grouped users from this section.</p>
                 </div>
 
                 {isMasterAdmin ? (
@@ -1581,7 +1734,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-[#27619d] px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#1f4f80]"
                   >
                     <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                    เพิ่ม License
+                    Add License
                   </button>
                 ) : null}
               </div>
@@ -1598,11 +1751,11 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   <table className="w-full min-w-[980px] table-auto text-left">
                     <thead className="bg-white/60">
                       <tr>
-                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">ชื่อ</th>
-                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">อีเมล</th>
+                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Name</th>
+                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Email</th>
                         <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">License</th>
                         <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Key</th>
-                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">หมดอายุ</th>
+                        <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Expiry</th>
                         <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Users</th>
                         {isMasterAdmin ? (
                           <th className="whitespace-nowrap px-3 py-2 text-[11px] font-bold tracking-wide text-[#596064]">Action</th>
@@ -1644,7 +1797,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                                     }`}
                                     title="Renew License"
                                   >
-                                    {status.key === 'expired' ? 'ต่อสิทธิ์' : 'Renew'}
+                                    {status.key === 'expired' ? 'Renew Now' : 'Renew'}
                                   </button>
                                   <button
                                     type="button"
@@ -1687,7 +1840,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                     {selectedOfficeLicenseItem?.name || 'Selected License'}
                   </h3>
                   <p className="font-body text-sm text-[#596064]">
-                    {selectedOfficeLicenseItem?.email || 'คลิกชื่อจากรายการด้านบนเพื่อดูรายชื่อในกลุ่มเดียวกัน'}
+                    {selectedOfficeLicenseItem?.email || 'à¹€à¸˜Â„à¹€à¸˜à¸…à¹€à¸˜à¸”à¹€à¸˜Âà¹€à¸˜ÂŠà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸à¹€à¸˜Âˆà¹€à¸˜à¸’à¹€à¸˜Âà¹€à¸˜à¸ƒà¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒà¹€à¸˜â€à¹€à¸™Â‰à¹€à¸˜à¸’à¹€à¸˜Â™à¹€à¸˜Âšà¹€à¸˜Â™à¹€à¸™â‚¬à¹€à¸˜Âžà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸à¹€à¸˜â€à¹€à¸˜à¸™à¹€à¸˜à¸ƒà¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜ÂŠà¹€à¸˜à¸—à¹€à¸™Âˆà¹€à¸˜à¸à¹€à¸™Âƒà¹€à¸˜Â™à¹€à¸˜Âà¹€à¸˜à¸…à¹€à¸˜à¸˜à¹€à¸™Âˆà¹€à¸˜à¸à¹€à¸™â‚¬à¹€à¸˜â€à¹€à¸˜à¸•à¹€à¸˜à¸‚à¹€à¸˜à¸‡à¹€à¸˜Âà¹€à¸˜à¸‘à¹€à¸˜Â™'}
                   </p>
                 </div>
 
@@ -1697,7 +1850,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                     <div className="mt-1 font-semibold text-[#2c3437]">{selectedOfficeLicenseItem?.keyValue || '-'}</div>
                   </div>
                   <div className="rounded-2xl bg-white/70 px-4 py-3 text-sm shadow-sm">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[#596064]">หมดอายุ</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-[#596064]">à¹€à¸˜à¸‹à¹€à¸˜à¸à¹€à¸˜â€à¹€à¸˜à¸à¹€à¸˜à¸’à¹€à¸˜à¸‚à¹€à¸˜à¸˜</div>
                     <div className="mt-1 font-semibold text-[#2c3437]">
                       {formatDisplayDate(selectedOfficeLicenseItem?.endDate || '')}
                     </div>
@@ -1714,7 +1867,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
                 <div className="mb-4">
                   <h3 className="font-display text-lg font-bold text-[#2c3437]">Current License</h3>
-                  <p className="font-body text-sm text-[#596064]">ข้อมูลเก่าและข้อมูลที่ Renew จะถูกเก็บไว้ทั้งหมดในรายการนี้</p>
+                  <p className="font-body text-sm text-[#596064]">Shows the active Microsoft 365 license currently selected.</p>
                 </div>
                 {renderOfficeHistoryTable([selectedOfficeCurrentRecord])}
               </div>
@@ -1724,7 +1877,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-sm">
                 <div className="mb-4">
                   <h3 className="font-display text-lg font-bold text-[#2c3437]">License History</h3>
-                  <p className="font-body text-sm text-[#596064]">แยกรายการเก่าและประวัติการต่อสิทธิ์ออกจากตัวที่ใช้งานปัจจุบัน</p>
+                  <p className="font-body text-sm text-[#596064]">Shows previous Microsoft 365 license records for the selected user or renewal chain.</p>
                 </div>
                 {renderOfficeHistoryTable(selectedOfficePastRecords)}
               </div>
@@ -1734,7 +1887,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               renderOfficeGroupMembersTable(selectedOfficeGroupMembers)
             ) : (
               <div className="rounded-3xl border border-white/40 bg-white/40 p-10 text-center shadow-sm">
-                <p className="text-sm font-medium text-[#596064]">ยังไม่มีรายชื่อในกลุ่มเดียวกันสำหรับรายการนี้</p>
+                <p className="text-sm font-medium text-[#596064]">No grouped users found for this license.</p>
               </div>
             )}
           </section>
@@ -1756,7 +1909,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
             <div className="flex items-center justify-between gap-4 border-b border-white/60 px-6 py-5">
               <div>
                 <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">Preview</h3>
-                <p className="font-body text-sm text-[#596064]">{selectedAutodeskRecord.packet} • {selectedAutodeskRecord.user || '-'}</p>
+                <p className="font-body text-sm text-[#596064]">{selectedAutodeskRecord.packet} - {selectedAutodeskRecord.user || '-'}</p>
               </div>
               <button
                 type="button"
@@ -1773,7 +1926,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <h4 className="font-display text-lg font-bold text-[#2c3437]">PDF Preview</h4>
-                      <p className="font-body text-sm text-[#596064]">ไฟล์ PDF ของรายการที่เลือก</p>
+                      <p className="font-body text-sm text-[#596064]">Preview the PDF files attached to this license record.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedAutodeskPdfFiles.map((file, index) => (
@@ -1833,7 +1986,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                       />
                     ) : (
                       <div className="flex h-[220px] items-center justify-center px-6 text-center text-sm font-medium text-[#596064]">
-                        ยังไม่มี PDF สำหรับรายการนี้
+                        No PDF file has been attached to this license record yet.
                       </div>
                     )}
                   </div>
@@ -1841,8 +1994,8 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 
                 <div className="rounded-3xl border border-white/40 bg-white/50 p-6 shadow-sm">
                   <div className="mb-4">
-                    <h4 className="font-display text-lg font-bold text-[#2c3437]">รายละเอียด Autodesk License</h4>
-                    <p className="font-body text-sm text-[#596064]">รายละเอียดของรายการที่เลือกอยู่ใน Autodesk License</p>
+                    <h4 className="font-display text-lg font-bold text-[#2c3437]">Autodesk License Details</h4>
+                    <p className="font-body text-sm text-[#596064]">Review the full details of the selected Autodesk license record.</p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {[
@@ -1879,12 +2032,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">
-                  {autodeskModalMode === 'add' ? 'เพิ่มรายการ Autodesk License' : 'แก้ไข Autodesk License'}
+                  {autodeskModalMode === 'add' ? 'Add Autodesk License' : 'Edit Autodesk License'}
                 </h3>
                 <p className="mt-2 font-body text-sm text-[#596064]">
                   {autodeskModalMode === 'add'
-                    ? 'เพิ่มรายการใหม่เข้า License List ของ Autodesk'
-                    : 'บันทึกการแก้ไขหรือการต่อสิทธิ์ โดยเก็บข้อมูลเดิมไว้เป็นประวัติ'}
+                    ? 'Add a new Autodesk license record to the License List.'
+                    : 'Update the selected Autodesk license record details.'}
                 </p>
               </div>
 
@@ -2030,7 +2183,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   disabled={isSavingAutodeskRenew}
                   className="rounded-full border border-white/50 bg-white px-5 py-2.5 text-sm font-bold text-[#596064] transition-colors hover:bg-[#edf1f4] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  ยกเลิก
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -2038,10 +2191,10 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   className="rounded-full bg-[#27619d] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1f4f80] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSavingAutodeskRenew
-                    ? 'กำลังบันทึก...'
+                    ? 'Saving...'
                     : autodeskModalMode === 'add'
-                      ? 'บันทึกรายการ'
-                      : 'บันทึกการแก้ไข'}
+                      ? 'Save License'
+                      : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -2057,17 +2210,17 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               <div>
                 <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">
                   {officeModalMode === 'add'
-                    ? 'เพิ่ม License'
+                    ? 'Add License'
                     : officeModalMode === 'renew'
                       ? 'Renew License'
-                      : 'แก้ไข License'}
+                      : 'Edit License'}
                 </h3>
                 <p className="mt-2 font-body text-sm text-[#596064]">
                   {officeModalMode === 'add'
-                    ? 'เพิ่มรายการ License Microsoft 365 ใหม่พร้อม Key และวันหมดอายุ'
+                    ? 'Add a new Microsoft 365 license record with key and expiry date.'
                     : officeModalMode === 'renew'
-                      ? 'อัปเดต Key ใหม่และวันหมดอายุใหม่ของ License นี้'
-                      : 'แก้ไขชื่อ License, Key และวันหมดอายุของรายการนี้'}
+                      ? 'Update the key and expiry date for this license.'
+                      : 'Edit the license name, key, and expiry date for this record.'}
                 </p>
               </div>
 
@@ -2082,26 +2235,26 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 
             <form className="space-y-5" onSubmit={handleOfficeLicenseSubmit}>
               <div>
-                <label className="mb-2 block text-sm font-bold text-[#2c3437]">ชื่อ</label>
+                <label className="mb-2 block text-sm font-bold text-[#2c3437]">Name</label>
                 <input
                   type="text"
                   value={officeForm.name}
                   onChange={(e) => setOfficeForm((prev) => ({ ...prev, name: e.target.value }))}
                   disabled={officeModalMode === 'renew'}
                   className="w-full rounded-2xl border border-white/50 bg-white/80 px-4 py-3 text-sm text-[#2c3437] outline-none transition-all focus:border-[#9bc7eb] focus:bg-white disabled:bg-slate-100"
-                  placeholder="กรอกชื่อผู้ถือ License"
+                  placeholder="Enter the license holder name"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-[#2c3437]">อีเมล</label>
+                <label className="mb-2 block text-sm font-bold text-[#2c3437]">Email</label>
                 <input
                   type="text"
                   value={officeForm.email}
                   onChange={(e) => setOfficeForm((prev) => ({ ...prev, email: e.target.value }))}
                   disabled={officeModalMode === 'renew'}
                   className="w-full rounded-2xl border border-white/50 bg-white/80 px-4 py-3 text-sm text-[#2c3437] outline-none transition-all focus:border-[#9bc7eb] focus:bg-white disabled:bg-slate-100"
-                  placeholder="กรอกอีเมลผู้ถือ License"
+                  placeholder="Enter the license holder email"
                 />
               </div>
 
@@ -2113,7 +2266,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   onChange={(e) => setOfficeForm((prev) => ({ ...prev, packet: e.target.value }))}
                   disabled={officeModalMode === 'renew'}
                   className="w-full rounded-2xl border border-white/50 bg-white/80 px-4 py-3 text-sm text-[#2c3437] outline-none transition-all focus:border-[#9bc7eb] focus:bg-white"
-                  placeholder="เช่น Microsoft 365 Family"
+                  placeholder="e.g. Microsoft 365 Family"
                 />
               </div>
 
@@ -2125,7 +2278,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   onChange={(e) => setOfficeForm((prev) => ({ ...prev, color: e.target.value }))}
                   disabled={officeModalMode === 'renew'}
                   className="w-full rounded-2xl border border-white/50 bg-white/80 px-4 py-3 text-sm text-[#2c3437] outline-none transition-all focus:border-[#9bc7eb] focus:bg-white disabled:bg-slate-100"
-                  placeholder="เช่น 14083324"
+                  placeholder="e.g. 14083324"
                 />
               </div>
 
@@ -2136,12 +2289,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   value={officeForm.keyValue}
                   onChange={(e) => setOfficeForm((prev) => ({ ...prev, keyValue: e.target.value }))}
                   className="w-full rounded-2xl border border-white/50 bg-white/80 px-4 py-3 text-sm text-[#2c3437] outline-none transition-all focus:border-[#9bc7eb] focus:bg-white"
-                  placeholder="กรอก License Key"
+                  placeholder="Enter license key"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-[#2c3437]">วันหมดอายุ</label>
+                <label className="mb-2 block text-sm font-bold text-[#2c3437]">Expiry Date</label>
                 <input
                   type="date"
                   value={officeForm.endDate}
@@ -2157,7 +2310,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   disabled={isSavingOfficeLicense}
                   className="rounded-full border border-white/50 bg-white px-5 py-2.5 text-sm font-bold text-[#596064] transition-colors hover:bg-[#edf1f4] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  ยกเลิก
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -2165,12 +2318,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                   className="rounded-full bg-[#27619d] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1f4f80] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSavingOfficeLicense
-                    ? 'กำลังบันทึก...'
+                    ? 'Saving...'
                     : officeModalMode === 'add'
-                      ? 'บันทึก License'
+                      ? 'Save License'
                       : officeModalMode === 'renew'
-                        ? 'บันทึกการ Renew'
-                        : 'บันทึกการแก้ไข'}
+                        ? 'Save Renew'
+                        : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -2185,12 +2338,12 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
             onClick={() => (isDeletingOfficeLicense ? null : setOfficeDeleteTarget(null))}
           />
           <div className="relative w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-8 shadow-2xl">
-            <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">ลบ License</h3>
+            <h3 className="font-display text-2xl font-extrabold text-[#2c3437]">à¹€à¸˜à¸…à¹€à¸˜Âš License</h3>
             <p className="mt-3 font-body text-sm text-[#596064]">
-              ต้องการลบ License ของ <span className="font-bold text-[#2c3437]">{officeDeleteTarget.name}</span> ใช่หรือไม่
+              à¹€à¸˜â€¢à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜Â‡à¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒà¹€à¸˜à¸…à¹€à¸˜Âš License à¹€à¸˜Â‚à¹€à¸˜à¸à¹€à¸˜Â‡ <span className="font-bold text-[#2c3437]">{officeDeleteTarget.name}</span> à¹€à¸™Âƒà¹€à¸˜ÂŠà¹€à¸™Âˆà¹€à¸˜à¸‹à¹€à¸˜à¸ƒà¹€à¸˜à¸—à¹€à¸˜à¸à¹€à¸™Â„à¹€à¸˜à¸à¹€à¸™Âˆ
             </p>
             <p className="mt-2 font-body text-xs text-[#7a8286]">
-              การลบจะลบเฉพาะข้อมูลที่บันทึกไว้ในระบบ แต่ข้อมูลผู้ใช้จาก Excel snapshot จะยังอยู่
+              à¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒà¹€à¸˜à¸…à¹€à¸˜Âšà¹€à¸˜Âˆà¹€à¸˜à¸à¹€à¸˜à¸…à¹€à¸˜Âšà¹€à¸™â‚¬à¹€à¸˜Â‰à¹€à¸˜Âžà¹€à¸˜à¸’à¹€à¸˜à¸à¹€à¸˜Â‚à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜à¸à¹€à¸˜à¸™à¹€à¸˜à¸…à¹€à¸˜â€”à¹€à¸˜à¸•à¹€à¸™Âˆà¹€à¸˜Âšà¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜â€”à¹€à¸˜à¸–à¹€à¸˜Âà¹€à¸™Â„à¹€à¸˜à¸‡à¹€à¸™Â‰à¹€à¸™Âƒà¹€à¸˜Â™à¹€à¸˜à¸ƒà¹€à¸˜à¸à¹€à¸˜Âšà¹€à¸˜Âš à¹€à¸™Âà¹€à¸˜â€¢à¹€à¸™Âˆà¹€à¸˜Â‚à¹€à¸™Â‰à¹€à¸˜à¸à¹€à¸˜à¸à¹€à¸˜à¸™à¹€à¸˜à¸…à¹€à¸˜Âœà¹€à¸˜à¸™à¹€à¸™Â‰à¹€à¸™Âƒà¹€à¸˜ÂŠà¹€à¸™Â‰à¹€à¸˜Âˆà¹€à¸˜à¸’à¹€à¸˜Â Excel snapshot à¹€à¸˜Âˆà¹€à¸˜à¸à¹€à¸˜à¸‚à¹€à¸˜à¸‘à¹€à¸˜Â‡à¹€à¸˜à¸à¹€à¸˜à¸‚à¹€à¸˜à¸™à¹€à¸™Âˆ
             </p>
 
             <div className="mt-6 flex justify-end gap-3">
@@ -2200,7 +2353,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 disabled={isDeletingOfficeLicense}
                 className="rounded-full border border-white/50 bg-white px-5 py-2.5 text-sm font-bold text-[#596064] transition-colors hover:bg-[#edf1f4] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                ยกเลิก
+                à¹€à¸˜à¸‚à¹€à¸˜Âà¹€à¸™â‚¬à¹€à¸˜à¸…à¹€à¸˜à¸”à¹€à¸˜Â
               </button>
               <button
                 type="button"
@@ -2208,7 +2361,7 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 disabled={isDeletingOfficeLicense}
                 className="rounded-full bg-[#c84b4b] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#b53c3c] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDeletingOfficeLicense ? 'กำลังลบ...' : 'ยืนยันการลบ'}
+                {isDeletingOfficeLicense ? 'à¹€à¸˜Âà¹€à¸˜à¸“à¹€à¸˜à¸…à¹€à¸˜à¸‘à¹€à¸˜Â‡à¹€à¸˜à¸…à¹€à¸˜Âš...' : 'à¹€à¸˜à¸‚à¹€à¸˜à¸—à¹€à¸˜Â™à¹€à¸˜à¸‚à¹€à¸˜à¸‘à¹€à¸˜Â™à¹€à¸˜Âà¹€à¸˜à¸’à¹€à¸˜à¸ƒà¹€à¸˜à¸…à¹€à¸˜Âš'}
               </button>
             </div>
           </div>
@@ -2219,3 +2372,4 @@ const handleOfficeLicenseSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 };
 
 export default License;
+
